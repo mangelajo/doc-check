@@ -359,15 +359,28 @@ EXPLANATION: [Your explanation]"""
     
     def _calculate_anthropic_cost(self, usage) -> float:
         """Calculate estimated cost for Anthropic API usage."""
-        # Pricing as of 2024 (per 1K tokens)
+        # Pricing as of December 2024 (per 1K tokens)
         pricing = {
+            # Claude 4 models
+            "claude-opus-4": {"input": 0.015, "output": 0.075},
+            "claude-sonnet-4": {"input": 0.003, "output": 0.015},
             "claude-sonnet-4-20250514": {"input": 0.003, "output": 0.015},
+            
+            # Claude 3.7 models
+            "claude-sonnet-3.7": {"input": 0.003, "output": 0.015},
+            
+            # Claude 3.5 models
             "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
+            "claude-3-5-sonnet-20240620": {"input": 0.003, "output": 0.015},
+            "claude-haiku-3.5": {"input": 0.0008, "output": 0.004},
+            
+            # Claude 3 models
+            "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
             "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
             "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
         }
         
-        # Default to sonnet pricing if model not found
+        # Default to sonnet 4 pricing if model not found
         model_pricing = pricing.get(self.model, pricing["claude-sonnet-4-20250514"])
         
         input_cost = (usage.input_tokens / 1000) * model_pricing["input"]
