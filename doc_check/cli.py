@@ -28,6 +28,8 @@ def cli():
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
+@click.option('--summarize', is_flag=True, help='Summarize the document before asking questions (useful for models with smaller context windows)')
+@click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 def check(
     config_file: Path,
     api_key: Optional[str],
@@ -35,7 +37,9 @@ def check(
     provider: str,
     verbose: bool,
     output: Optional[Path],
-    format: str
+    format: str,
+    summarize: bool,
+    summarizer_model: Optional[str]
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -56,8 +60,18 @@ def check(
                 provider = detected_provider
                 console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
         
+        # Set default summarizer model if not specified
+        if summarize and summarizer_model is None:
+            summarizer_model = "claude-sonnet-4-20250514"
+        
         # Initialize checker
-        checker = DocumentChecker(api_key=api_key, model=model, provider=provider)
+        checker = DocumentChecker(
+            api_key=api_key, 
+            model=model, 
+            provider=provider,
+            summarize=summarize,
+            summarizer_model=summarizer_model
+        )
         
         # Run the check
         console.print(f"[bold blue]Starting document check with config: {config_file}[/bold blue]")
@@ -204,6 +218,8 @@ def validate(config_file: Path) -> None:
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
+@click.option('--summarize', is_flag=True, help='Summarize the document before asking questions (useful for models with smaller context windows)')
+@click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 def main(
     config_file: Path,
     api_key: Optional[str],
@@ -211,7 +227,9 @@ def main(
     provider: str,
     verbose: bool,
     output: Optional[Path],
-    format: str
+    format: str,
+    summarize: bool,
+    summarizer_model: Optional[str]
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -231,7 +249,7 @@ def main(
             provider = detected_provider
             console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
     
-    return check(config_file, api_key, model, provider, verbose, output, format)
+    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model)
 
 
 if __name__ == '__main__':

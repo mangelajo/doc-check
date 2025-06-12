@@ -43,16 +43,20 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", provider: Literal["openai", "anthropic"] = "openai"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", provider: Literal["openai", "anthropic"] = "openai", summarize: bool = False, summarizer_model: Optional[str] = None):
         """Initialize the document checker.
         
         Args:
             api_key: API key for the chosen provider. If None, will try to get from environment.
             model: Model to use for evaluation.
             provider: Which API provider to use ("openai" or "anthropic").
+            summarize: Whether to summarize the document before asking questions.
+            summarizer_model: Model to use for document summarization.
         """
         self.provider = provider
         self.model = model
+        self.summarize = summarize
+        self.summarizer_model = summarizer_model or "claude-sonnet-4-20250514"
         self.console = Console()
         self.api_usage = ApiUsage(provider=provider, model=model)
         
@@ -371,6 +375,84 @@ EXPLANATION: [Your explanation]"""
         
         return input_cost + output_cost
     
+    def summarize_document(self, document_content: str) -> str:
+        """Summarize the document content using the summarizer model."""
+        # Detect provider for summarizer model
+        summarizer_provider = detect_provider_from_model(self.summarizer_model)
+        
+        prompt = f"""Please provide a comprehensive summary of the following document. The summary should:
+1. Capture all key information, concepts, and details
+2. Maintain the structure and organization of the original
+3. Include important technical details, examples, and specifications
+4. Be detailed enough to answer questions about the document's content
+5. Preserve any code examples, configuration details, or specific instructions
+
+Document to summarize:
+{document_content}
+
+Please provide a thorough summary that retains the essential information needed to answer detailed questions about this document."""
+
+        try:
+            if summarizer_provider == "anthropic":
+                # Initialize Anthropic client for summarization if needed
+                if not hasattr(self, 'summarizer_anthropic_client'):
+                    self.summarizer_anthropic_client = anthropic.Anthropic(
+                        api_key=os.getenv("ANTHROPIC_API_KEY")
+                    )
+                
+                response = self.summarizer_anthropic_client.messages.create(
+                    model=self.summarizer_model,
+                    max_tokens=8000,
+                    temperature=0.1,
+                    system="You are an expert document summarizer. Create comprehensive, detailed summaries that preserve all important information.",
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                
+                # Track usage for summarization
+                if response.usage:
+                    self.api_usage.input_tokens += response.usage.input_tokens
+                    self.api_usage.output_tokens += response.usage.output_tokens
+                    self.api_usage.total_tokens += response.usage.input_tokens + response.usage.output_tokens
+                    self.api_usage.api_calls += 1
+                    self.api_usage.estimated_cost += self._calculate_anthropic_cost(response.usage)
+                
+                summary = response.content[0].text
+                
+            else:
+                # Initialize OpenAI client for summarization if needed
+                if not hasattr(self, 'summarizer_openai_client'):
+                    self.summarizer_openai_client = OpenAI(
+                        api_key=os.getenv("OPENAI_API_KEY")
+                    )
+                
+                response = self.summarizer_openai_client.chat.completions.create(
+                    model=self.summarizer_model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert document summarizer. Create comprehensive, detailed summaries that preserve all important information."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.1
+                )
+                
+                # Track usage for summarization
+                if response.usage:
+                    self.api_usage.input_tokens += response.usage.prompt_tokens
+                    self.api_usage.output_tokens += response.usage.completion_tokens
+                    self.api_usage.total_tokens += response.usage.total_tokens
+                    self.api_usage.api_calls += 1
+                    self.api_usage.estimated_cost += self._calculate_openai_cost(response.usage)
+                
+                summary = response.choices[0].message.content or ""
+            
+            self.console.print(f"[green]Document summarized successfully[/green] (Original: {len(document_content):,} chars → Summary: {len(summary):,} chars)")
+            return summary
+            
+        except Exception as e:
+            self.console.print(f"[yellow]Warning: Failed to summarize document, using original content: {e}[/yellow]")
+            return document_content
+    
     def check_document(self, config_path: Path) -> DocCheckResult:
         """Check a document according to the configuration."""
         start_time = datetime.now()
@@ -381,6 +463,11 @@ EXPLANATION: [Your explanation]"""
         # Resolve document path relative to config file
         doc_path = config_path.parent / config.file
         document_content = self.load_document(doc_path)
+        
+        # Summarize document if requested
+        if self.summarize:
+            self.console.print("[blue]Summarizing document...[/blue]")
+            document_content = self.summarize_document(document_content)
         
         results = []
         
