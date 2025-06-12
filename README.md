@@ -26,6 +26,16 @@ pip install -e .
 
 ## Usage
 
+### Commands
+
+Doc-Check provides several commands:
+
+- `doc-check check`: Check documentation quality using LLM evaluation
+- `doc-check validate`: Validate configuration file format
+- `doc-check main`: Alternative entry point for checking (same as check)
+
+### Basic Usage
+
 1. Create a `doc-check.yaml` configuration file:
 
 ```yaml
@@ -40,30 +50,80 @@ questions:
        argoCD into a cluster.
 ```
 
-2. Set your OpenAI API key:
+2. Set your API key (OpenAI or Anthropic):
 
 ```bash
 export OPENAI_API_KEY="your-api-key-here"
+# OR
+export ANTHROPIC_API_KEY="your-api-key-here"
 ```
 
 3. Run the check:
 
 ```bash
-doc-check doc-check.yaml
+doc-check check doc-check.yaml
 ```
 
-## Options
+### Check Command Options
 
-- `--api-key`: OpenAI API key (alternative to environment variable)
-- `--model`: OpenAI model to use (default: gpt-4)
+- `--api-key`: API key (alternative to environment variable)
+- `--model`: Model to use (auto-detects provider from model name)
+- `--provider`: Explicitly specify provider (openai or anthropic)
 - `--verbose, -v`: Show detailed output including full answers
-- `--output, -o`: Save results to JSON file
+- `--output, -o`: Save results to file
+- `--format`: Output format (json, yaml, or auto)
+- `--summarize`: Summarization level (minimal, moderate, aggressive)
+- `--summarizer-model`: Model to use for document summarization
 
-## Example
+### Validate Command
+
+Validate your configuration file:
 
 ```bash
-doc-check doc-check.yaml --verbose --output results.json
+doc-check validate doc-check.yaml
 ```
+
+## Examples
+
+```bash
+# Basic check with verbose output
+doc-check check doc-check.yaml --verbose
+
+# Save results to JSON file
+doc-check check doc-check.yaml --output results.json
+
+# Use specific model and provider
+doc-check check doc-check.yaml --model gpt-4.1 --provider openai
+
+# Use Anthropic Claude
+doc-check check doc-check.yaml --model claude-sonnet-4-20250514
+
+# Summarize document before checking (for large documents)
+doc-check check doc-check.yaml --summarize minimal
+
+# Validate configuration only
+doc-check validate doc-check.yaml
+```
+
+## Supported Models and Providers
+
+Doc-Check supports both OpenAI and Anthropic models with automatic provider detection:
+
+### OpenAI Models
+- `gpt-4.1` (default)
+- `gpt-4.1-mini`
+- `gpt-4.1-nano`
+- `gpt-4.5-turbo`
+- And other GPT models
+
+### Anthropic Models
+- `claude-sonnet-4-20250514` (default for Anthropic)
+- `claude-opus-4`
+- `claude-sonnet-3.7`
+- `claude-3-5-sonnet-20241022`
+- And other Claude models
+
+The provider is automatically detected from the model name, or you can specify it explicitly with `--provider`.
 
 ## Configuration Format
 
