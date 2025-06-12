@@ -15,6 +15,23 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
+from .constants import (
+    QUESTION_ANSWERING_SYSTEM_PROMPT,
+    EVALUATION_SYSTEM_PROMPT,
+    SUMMARIZATION_SYSTEM_PROMPT,
+    QUESTION_PROMPT_TEMPLATE,
+    EVALUATION_PROMPT_TEMPLATE,
+    SUMMARIZATION_PROMPTS,
+    DEFAULT_OPENAI_MODEL,
+    DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_SUMMARIZER_MODEL,
+    OPENAI_MAX_TOKENS,
+    ANTHROPIC_MAX_TOKENS,
+    ANTHROPIC_SUMMARIZER_MAX_TOKENS,
+    DEFAULT_TEMPERATURE,
+    OPENAI_PRICING,
+    ANTHROPIC_PRICING,
+)
 
 
 def detect_provider_from_model(model: str) -> str:
@@ -43,7 +60,7 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", provider: Literal["openai", "anthropic"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None):
         """Initialize the document checker.
         
         Args:
@@ -56,7 +73,7 @@ class DocumentChecker:
         self.provider = provider
         self.model = model
         self.summarize = summarize
-        self.summarizer_model = summarizer_model or "claude-sonnet-4-20250514"
+        self.summarizer_model = summarizer_model or DEFAULT_SUMMARIZER_MODEL
         self.console = Console()
         self.api_usage = ApiUsage(provider=provider, model=model)
         
@@ -64,8 +81,8 @@ class DocumentChecker:
             self.anthropic_client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
             self.openai_client = None
             # Set default Claude model if using default OpenAI model
-            if model == "gpt-4":
-                self.model = "claude-sonnet-4-20250514"
+            if model == DEFAULT_OPENAI_MODEL:
+                self.model = DEFAULT_ANTHROPIC_MODEL
                 self.api_usage.model = self.model
         else:
             self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
@@ -143,23 +160,19 @@ class DocumentChecker:
     
     def _ask_question_openai(self, document_content: str, question: str) -> str:
         """Ask a question using OpenAI API."""
-        prompt = f"""Based on the following document, please answer this question:
-
-Question: {question}
-
-Document:
-{document_content}
-
-Please provide a comprehensive answer based on the information in the document."""
+        prompt = QUESTION_PROMPT_TEMPLATE.format(
+            question=question,
+            document_content=document_content
+        )
 
         try:
             response = self.openai_client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant that answers questions about documentation accurately and comprehensively."},
+                    {"role": "system", "content": QUESTION_ANSWERING_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1
+                temperature=DEFAULT_TEMPERATURE
             )
             
             # Track usage
@@ -176,21 +189,17 @@ Please provide a comprehensive answer based on the information in the document."
     
     def _ask_question_anthropic(self, document_content: str, question: str) -> str:
         """Ask a question using Anthropic API."""
-        prompt = f"""Based on the following document, please answer this question:
-
-Question: {question}
-
-Document:
-{document_content}
-
-Please provide a comprehensive answer based on the information in the document."""
+        prompt = QUESTION_PROMPT_TEMPLATE.format(
+            question=question,
+            document_content=document_content
+        )
 
         try:
             response = self.anthropic_client.messages.create(
                 model=self.model,
-                max_tokens=4000,
-                temperature=0.1,
-                system="You are a helpful assistant that answers questions about documentation accurately and comprehensively.",
+                max_tokens=ANTHROPIC_MAX_TOKENS,
+                temperature=DEFAULT_TEMPERATURE,
+                system=QUESTION_ANSWERING_SYSTEM_PROMPT,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
@@ -217,30 +226,20 @@ Please provide a comprehensive answer based on the information in the document."
     
     def _evaluate_answer_openai(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
         """Evaluate an answer using OpenAI API."""
-        prompt = f"""Please evaluate the following answer against the given criteria.
-
-Question: {question}
-
-Answer: {answer}
-
-Evaluation Criteria: {evaluation_criteria}
-
-Please respond with:
-1. PASS or FAIL
-2. A brief explanation of your evaluation
-
-Format your response as:
-RESULT: [PASS/FAIL]
-EXPLANATION: [Your explanation]"""
+        prompt = EVALUATION_PROMPT_TEMPLATE.format(
+            question=question,
+            answer=answer,
+            evaluation_criteria=evaluation_criteria
+        )
 
         try:
             response = self.openai_client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are an expert evaluator. Carefully assess whether the answer meets the specified criteria. Be strict but fair in your evaluation."},
+                    {"role": "system", "content": EVALUATION_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1
+                temperature=DEFAULT_TEMPERATURE
             )
             
             # Track usage
@@ -259,28 +258,18 @@ EXPLANATION: [Your explanation]"""
     
     def _evaluate_answer_anthropic(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
         """Evaluate an answer using Anthropic API."""
-        prompt = f"""Please evaluate the following answer against the given criteria.
-
-Question: {question}
-
-Answer: {answer}
-
-Evaluation Criteria: {evaluation_criteria}
-
-Please respond with:
-1. PASS or FAIL
-2. A brief explanation of your evaluation
-
-Format your response as:
-RESULT: [PASS/FAIL]
-EXPLANATION: [Your explanation]"""
+        prompt = EVALUATION_PROMPT_TEMPLATE.format(
+            question=question,
+            answer=answer,
+            evaluation_criteria=evaluation_criteria
+        )
 
         try:
             response = self.anthropic_client.messages.create(
                 model=self.model,
                 max_tokens=2000,
-                temperature=0.1,
-                system="You are an expert evaluator. Carefully assess whether the answer meets the specified criteria. Be strict but fair in your evaluation.",
+                temperature=DEFAULT_TEMPERATURE,
+                system=EVALUATION_SYSTEM_PROMPT,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
@@ -342,15 +331,8 @@ EXPLANATION: [Your explanation]"""
     
     def _calculate_openai_cost(self, usage) -> float:
         """Calculate estimated cost for OpenAI API usage."""
-        # Pricing as of 2024 (per 1K tokens)
-        pricing = {
-            "gpt-4": {"input": 0.03, "output": 0.06},
-            "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-            "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
-        }
-        
         # Default to gpt-4 pricing if model not found
-        model_pricing = pricing.get(self.model, pricing["gpt-4"])
+        model_pricing = OPENAI_PRICING.get(self.model, OPENAI_PRICING[DEFAULT_OPENAI_MODEL])
         
         input_cost = (usage.prompt_tokens / 1000) * model_pricing["input"]
         output_cost = (usage.completion_tokens / 1000) * model_pricing["output"]
@@ -359,30 +341,8 @@ EXPLANATION: [Your explanation]"""
     
     def _calculate_anthropic_cost(self, usage) -> float:
         """Calculate estimated cost for Anthropic API usage."""
-        # Pricing as of December 2024 (per 1K tokens)
-        # Source: https://docs.anthropic.com/en/docs/about-claude/pricing
-        pricing = {
-            # Claude 4 models
-            "claude-opus-4": {"input": 0.015, "output": 0.075},
-            "claude-sonnet-4": {"input": 0.003, "output": 0.015},
-            "claude-sonnet-4-20250514": {"input": 0.003, "output": 0.015},
-            
-            # Claude 3.7 models
-            "claude-sonnet-3.7": {"input": 0.003, "output": 0.015},
-            
-            # Claude 3.5 models
-            "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
-            "claude-3-5-sonnet-20240620": {"input": 0.003, "output": 0.015},
-            "claude-haiku-3.5": {"input": 0.0008, "output": 0.004},
-            
-            # Claude 3 models
-            "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
-            "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
-            "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
-        }
-        
         # Default to sonnet 4 pricing if model not found
-        model_pricing = pricing.get(self.model, pricing["claude-sonnet-4-20250514"])
+        model_pricing = ANTHROPIC_PRICING.get(self.model, ANTHROPIC_PRICING[DEFAULT_ANTHROPIC_MODEL])
         
         input_cost = (usage.input_tokens / 1000) * model_pricing["input"]
         output_cost = (usage.output_tokens / 1000) * model_pricing["output"]
@@ -394,76 +354,9 @@ EXPLANATION: [Your explanation]"""
         # Detect provider for summarizer model
         summarizer_provider = detect_provider_from_model(self.summarizer_model)
         
-        # Define summarization prompts based on level
-        if self.summarize == "minimal":
-            prompt = f"""Please provide a minimal summary of the following document. The summary should:
-1. Preserve nearly all key information, concepts, and details
-2. Maintain the exact structure and organization of the original
-3. Include all technical details, examples, and specifications
-4. Be comprehensive enough to answer any detailed questions about the document's content
-5. Preserve all code examples, configuration details, and specific instructions
-6. Only remove redundant phrases and minor formatting - aim to reduce length by about 5-10% while keeping all essential content
-
-Document to summarize:
-{document_content}
-
-Please provide a very detailed summary that retains virtually all essential information needed to answer questions about this document."""
-        
-        elif self.summarize == "light":
-            prompt = f"""Please provide a light summary of the following document. The summary should:
-1. Preserve most key information, concepts, and details
-2. Maintain the structure and organization of the original
-3. Include all important technical details, examples, and specifications
-4. Be comprehensive enough to answer detailed questions about the document's content
-5. Preserve all code examples, configuration details, and specific instructions
-6. Aim to reduce length by about 20-30% while keeping essential details
-
-Document to summarize:
-{document_content}
-
-Please provide a detailed summary that retains nearly all essential information needed to answer questions about this document."""
-        
-        elif self.summarize == "medium":
-            prompt = f"""Please provide a balanced summary of the following document. The summary should:
-1. Capture the most important information, concepts, and key details
-2. Maintain the overall structure but condense sections appropriately
-3. Include critical technical details and key examples
-4. Be detailed enough to answer most questions about the document's content
-5. Preserve essential code examples and important configuration details
-6. Aim to reduce length by about 50% while keeping important information
-
-Document to summarize:
-{document_content}
-
-Please provide a well-balanced summary that retains the important information needed to answer questions about this document."""
-        
-        elif self.summarize == "aggressive":
-            prompt = f"""Please provide a high-level summary of the following document. The summary should:
-1. Focus on the main concepts, key points, and essential information only
-2. Provide a condensed overview of the document's structure and purpose
-3. Include only the most critical technical details and examples
-4. Cover the core topics at a level sufficient for general understanding
-5. Preserve only the most essential code examples or configuration details
-6. Aim to reduce length by about 70-80% while keeping core concepts
-
-Document to summarize:
-{document_content}
-
-Please provide a concise, high-level summary that captures the essential concepts and main points of this document."""
-        
-        else:
-            # Fallback to medium level if somehow an invalid level is passed
-            prompt = f"""Please provide a balanced summary of the following document. The summary should:
-1. Capture the most important information, concepts, and key details
-2. Maintain the overall structure but condense sections appropriately
-3. Include critical technical details and key examples
-4. Be detailed enough to answer most questions about the document's content
-5. Preserve essential code examples and important configuration details
-
-Document to summarize:
-{document_content}
-
-Please provide a well-balanced summary that retains the important information needed to answer questions about this document."""
+        # Get summarization prompt based on level
+        prompt_template = SUMMARIZATION_PROMPTS.get(self.summarize, SUMMARIZATION_PROMPTS["medium"])
+        prompt = prompt_template.format(document_content=document_content)
 
         try:
             if summarizer_provider == "anthropic":
@@ -475,9 +368,9 @@ Please provide a well-balanced summary that retains the important information ne
                 
                 response = self.summarizer_anthropic_client.messages.create(
                     model=self.summarizer_model,
-                    max_tokens=8000,
-                    temperature=0.1,
-                    system="You are an expert document summarizer. Create comprehensive, detailed summaries that preserve all important information.",
+                    max_tokens=ANTHROPIC_SUMMARIZER_MAX_TOKENS,
+                    temperature=DEFAULT_TEMPERATURE,
+                    system=SUMMARIZATION_SYSTEM_PROMPT,
                     messages=[
                         {"role": "user", "content": prompt}
                     ]
@@ -503,10 +396,10 @@ Please provide a well-balanced summary that retains the important information ne
                 response = self.summarizer_openai_client.chat.completions.create(
                     model=self.summarizer_model,
                     messages=[
-                        {"role": "system", "content": "You are an expert document summarizer. Create comprehensive, detailed summaries that preserve all important information."},
+                        {"role": "system", "content": SUMMARIZATION_SYSTEM_PROMPT},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.1
+                    temperature=DEFAULT_TEMPERATURE
                 )
                 
                 # Track usage for summarization

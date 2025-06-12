@@ -12,6 +12,7 @@ from rich.text import Text
 
 from .core import DocumentChecker, detect_provider_from_model
 from .models import DocCheckResult
+from .constants import DEFAULT_OPENAI_MODEL, DEFAULT_ANTHROPIC_MODEL, DEFAULT_SUMMARIZER_MODEL
 
 
 @click.group()
@@ -50,7 +51,7 @@ def check(
     try:
         # Set default model if not specified
         if model is None:
-            model = "claude-sonnet-4-20250514" if provider == "anthropic" else "gpt-4"
+            model = DEFAULT_ANTHROPIC_MODEL if provider == "anthropic" else DEFAULT_OPENAI_MODEL
         
         # Auto-detect provider from model if not explicitly set to non-default
         # We check if provider is still the default 'openai' and if the model suggests otherwise
@@ -62,7 +63,7 @@ def check(
         
         # Set default summarizer model if not specified
         if summarize and summarizer_model is None:
-            summarizer_model = "claude-sonnet-4-20250514"
+            summarizer_model = DEFAULT_SUMMARIZER_MODEL
         
         # Initialize checker
         checker = DocumentChecker(
@@ -240,7 +241,7 @@ def main(
     
     # Set default model if not specified
     if model is None:
-        model = "claude-sonnet-4-20250514" if provider == "anthropic" else "gpt-4"
+        model = DEFAULT_ANTHROPIC_MODEL if provider == "anthropic" else DEFAULT_OPENAI_MODEL
     
     # Auto-detect provider from model if not explicitly set to non-default
     if provider == "openai":  # This is the default value
