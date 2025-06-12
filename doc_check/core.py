@@ -3,12 +3,13 @@
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
 import yaml
 from openai import OpenAI
+import anthropic
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
@@ -18,16 +19,27 @@ from .models import DocCheckConfig, DocCheckResult, QuestionResult
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", provider: Literal["openai", "anthropic"] = "openai"):
         """Initialize the document checker.
         
         Args:
-            api_key: OpenAI API key. If None, will try to get from environment.
-            model: OpenAI model to use for evaluation.
+            api_key: API key for the chosen provider. If None, will try to get from environment.
+            model: Model to use for evaluation.
+            provider: Which API provider to use ("openai" or "anthropic").
         """
-        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self.provider = provider
         self.model = model
         self.console = Console()
+        
+        if provider == "anthropic":
+            self.anthropic_client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
+            self.openai_client = None
+            # Set default Claude model if using default OpenAI model
+            if model == "gpt-4":
+                self.model = "claude-3-sonnet-20240229"
+        else:
+            self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+            self.anthropic_client = None
     
     def load_config(self, config_path: Path) -> DocCheckConfig:
         """Load configuration from YAML file."""
@@ -94,6 +106,13 @@ class DocumentChecker:
     
     def ask_question(self, document_content: str, question: str) -> str:
         """Ask a question about the document using LLM."""
+        if self.provider == "anthropic":
+            return self._ask_question_anthropic(document_content, question)
+        else:
+            return self._ask_question_openai(document_content, question)
+    
+    def _ask_question_openai(self, document_content: str, question: str) -> str:
+        """Ask a question using OpenAI API."""
         prompt = f"""Based on the following document, please answer this question:
 
 Question: {question}
@@ -104,7 +123,7 @@ Document:
 Please provide a comprehensive answer based on the information in the document."""
 
         try:
-            response = self.client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that answers questions about documentation accurately and comprehensively."},
@@ -114,10 +133,42 @@ Please provide a comprehensive answer based on the information in the document."
             )
             return response.choices[0].message.content or ""
         except Exception as e:
-            raise RuntimeError(f"Failed to get answer from LLM: {e}")
+            raise RuntimeError(f"Failed to get answer from OpenAI: {e}")
+    
+    def _ask_question_anthropic(self, document_content: str, question: str) -> str:
+        """Ask a question using Anthropic API."""
+        prompt = f"""Based on the following document, please answer this question:
+
+Question: {question}
+
+Document:
+{document_content}
+
+Please provide a comprehensive answer based on the information in the document."""
+
+        try:
+            response = self.anthropic_client.messages.create(
+                model=self.model,
+                max_tokens=4000,
+                temperature=0.1,
+                system="You are a helpful assistant that answers questions about documentation accurately and comprehensively.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            return response.content[0].text
+        except Exception as e:
+            raise RuntimeError(f"Failed to get answer from Anthropic: {e}")
     
     def evaluate_answer(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
         """Evaluate an answer against criteria using LLM."""
+        if self.provider == "anthropic":
+            return self._evaluate_answer_anthropic(question, answer, evaluation_criteria)
+        else:
+            return self._evaluate_answer_openai(question, answer, evaluation_criteria)
+    
+    def _evaluate_answer_openai(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
+        """Evaluate an answer using OpenAI API."""
         prompt = f"""Please evaluate the following answer against the given criteria.
 
 Question: {question}
@@ -135,7 +186,7 @@ RESULT: [PASS/FAIL]
 EXPLANATION: [Your explanation]"""
 
         try:
-            response = self.client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are an expert evaluator. Carefully assess whether the answer meets the specified criteria. Be strict but fair in your evaluation."},
@@ -145,47 +196,85 @@ EXPLANATION: [Your explanation]"""
             )
             
             evaluation_text = response.choices[0].message.content or ""
-            
-            # Improved parsing with multiple strategies
-            passed = False
-            explanation = evaluation_text
-            
-            # Strategy 1: Look for structured format
-            result_match = re.search(r'RESULT:\s*(PASS|FAIL)', evaluation_text, re.IGNORECASE)
-            explanation_match = re.search(r'EXPLANATION:\s*(.+)', evaluation_text, re.IGNORECASE | re.DOTALL)
-            
-            if result_match:
-                passed = result_match.group(1).upper() == 'PASS'
-                if explanation_match:
-                    explanation = explanation_match.group(1).strip()
-            else:
-                # Strategy 2: Look for pass/fail patterns in text
-                pass_indicators = ['PASS', 'passes', 'meets the criteria', 'satisfies', 'adequate', 'sufficient']
-                fail_indicators = ['FAIL', 'fails', 'does not meet', 'insufficient', 'inadequate', 'missing']
-                
-                text_upper = evaluation_text.upper()
-                pass_count = sum(1 for indicator in pass_indicators if indicator.upper() in text_upper)
-                fail_count = sum(1 for indicator in fail_indicators if indicator.upper() in text_upper)
-                
-                # If we have clear indicators, use them
-                if pass_count > fail_count:
-                    passed = True
-                elif fail_count > pass_count:
-                    passed = False
-                else:
-                    # Strategy 3: Look at the overall sentiment/tone
-                    positive_words = ['good', 'correct', 'accurate', 'comprehensive', 'detailed', 'complete']
-                    negative_words = ['poor', 'incorrect', 'inaccurate', 'incomplete', 'missing', 'lacks']
-                    
-                    positive_count = sum(1 for word in positive_words if word in text_upper)
-                    negative_count = sum(1 for word in negative_words if word in text_upper)
-                    
-                    passed = positive_count > negative_count
-            
-            return passed, explanation
+            return self._parse_evaluation_result(evaluation_text)
             
         except Exception as e:
-            raise RuntimeError(f"Failed to evaluate answer: {e}")
+            raise RuntimeError(f"Failed to evaluate answer with OpenAI: {e}")
+    
+    def _evaluate_answer_anthropic(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
+        """Evaluate an answer using Anthropic API."""
+        prompt = f"""Please evaluate the following answer against the given criteria.
+
+Question: {question}
+
+Answer: {answer}
+
+Evaluation Criteria: {evaluation_criteria}
+
+Please respond with:
+1. PASS or FAIL
+2. A brief explanation of your evaluation
+
+Format your response as:
+RESULT: [PASS/FAIL]
+EXPLANATION: [Your explanation]"""
+
+        try:
+            response = self.anthropic_client.messages.create(
+                model=self.model,
+                max_tokens=2000,
+                temperature=0.1,
+                system="You are an expert evaluator. Carefully assess whether the answer meets the specified criteria. Be strict but fair in your evaluation.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            evaluation_text = response.content[0].text
+            return self._parse_evaluation_result(evaluation_text)
+            
+        except Exception as e:
+            raise RuntimeError(f"Failed to evaluate answer with Anthropic: {e}")
+    
+    def _parse_evaluation_result(self, evaluation_text: str) -> tuple[bool, str]:
+        """Parse the evaluation result from LLM response."""
+        # Improved parsing with multiple strategies
+        passed = False
+        explanation = evaluation_text
+        
+        # Strategy 1: Look for structured format
+        result_match = re.search(r'RESULT:\s*(PASS|FAIL)', evaluation_text, re.IGNORECASE)
+        explanation_match = re.search(r'EXPLANATION:\s*(.+)', evaluation_text, re.IGNORECASE | re.DOTALL)
+        
+        if result_match:
+            passed = result_match.group(1).upper() == 'PASS'
+            if explanation_match:
+                explanation = explanation_match.group(1).strip()
+        else:
+            # Strategy 2: Look for pass/fail patterns in text
+            pass_indicators = ['PASS', 'passes', 'meets the criteria', 'satisfies', 'adequate', 'sufficient']
+            fail_indicators = ['FAIL', 'fails', 'does not meet', 'insufficient', 'inadequate', 'missing']
+            
+            text_upper = evaluation_text.upper()
+            pass_count = sum(1 for indicator in pass_indicators if indicator.upper() in text_upper)
+            fail_count = sum(1 for indicator in fail_indicators if indicator.upper() in text_upper)
+            
+            # If we have clear indicators, use them
+            if pass_count > fail_count:
+                passed = True
+            elif fail_count > pass_count:
+                passed = False
+            else:
+                # Strategy 3: Look at the overall sentiment/tone
+                positive_words = ['good', 'correct', 'accurate', 'comprehensive', 'detailed', 'complete']
+                negative_words = ['poor', 'incorrect', 'inaccurate', 'incomplete', 'missing', 'lacks']
+                
+                positive_count = sum(1 for word in positive_words if word in text_upper)
+                negative_count = sum(1 for word in negative_words if word in text_upper)
+                
+                passed = positive_count > negative_count
+        
+        return passed, explanation
     
     def check_document(self, config_path: Path) -> DocCheckResult:
         """Check a document according to the configuration."""

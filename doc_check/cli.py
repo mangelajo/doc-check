@@ -22,15 +22,17 @@ def cli():
 
 @cli.command()
 @click.argument('config_file', type=click.Path(exists=True, path_type=Path))
-@click.option('--api-key', help='OpenAI API key (or set OPENAI_API_KEY env var)')
-@click.option('--model', default='gpt-4', help='OpenAI model to use (default: gpt-4)')
+@click.option('--api-key', help='API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
+@click.option('--model', help='Model to use (default: gpt-4 for OpenAI, claude-3-sonnet-20240229 for Anthropic)')
+@click.option('--provider', type=click.Choice(['openai', 'anthropic']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 def check(
     config_file: Path,
     api_key: Optional[str],
-    model: str,
+    model: Optional[str],
+    provider: str,
     verbose: bool,
     output: Optional[Path],
     format: str
@@ -42,8 +44,12 @@ def check(
     console = Console()
     
     try:
+        # Set default model if not specified
+        if model is None:
+            model = "claude-3-sonnet-20240229" if provider == "anthropic" else "gpt-4"
+        
         # Initialize checker
-        checker = DocumentChecker(api_key=api_key, model=model)
+        checker = DocumentChecker(api_key=api_key, model=model, provider=provider)
         
         # Run the check
         console.print(f"[bold blue]Starting document check with config: {config_file}[/bold blue]")
@@ -169,15 +175,17 @@ def validate(config_file: Path) -> None:
 # For backwards compatibility, make the main command the default
 @click.command()
 @click.argument('config_file', type=click.Path(exists=True, path_type=Path))
-@click.option('--api-key', help='OpenAI API key (or set OPENAI_API_KEY env var)')
-@click.option('--model', default='gpt-4', help='OpenAI model to use (default: gpt-4)')
+@click.option('--api-key', help='API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
+@click.option('--model', help='Model to use (default: gpt-4 for OpenAI, claude-3-sonnet-20240229 for Anthropic)')
+@click.option('--provider', type=click.Choice(['openai', 'anthropic']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 def main(
     config_file: Path,
     api_key: Optional[str],
-    model: str,
+    model: Optional[str],
+    provider: str,
     verbose: bool,
     output: Optional[Path],
     format: str
@@ -186,7 +194,7 @@ def main(
     
     CONFIG_FILE: Path to the doc-check.yaml configuration file.
     """
-    return check(config_file, api_key, model, verbose, output, format)
+    return check(config_file, api_key, model, provider, verbose, output, format)
 
 
 if __name__ == '__main__':
