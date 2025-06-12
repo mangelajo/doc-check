@@ -30,6 +30,7 @@ dev = [
 
 [project.scripts]
 doc-check = "doc_check.cli:main"
+doc-check-cli = "doc_check.cli:cli"
 
 [tool.black]
 line-length = 88

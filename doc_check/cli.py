@@ -14,18 +14,26 @@ from .core import DocumentChecker
 from .models import DocCheckResult
 
 
-@click.command()
+@click.group()
+def cli():
+    """Doc-check: CLI tool for checking documentation with LLM-based Q&A evaluation."""
+    pass
+
+
+@cli.command()
 @click.argument('config_file', type=click.Path(exists=True, path_type=Path))
 @click.option('--api-key', help='OpenAI API key (or set OPENAI_API_KEY env var)')
 @click.option('--model', default='gpt-4', help='OpenAI model to use (default: gpt-4)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
-@click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to JSON file')
-def main(
+@click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
+@click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
+def check(
     config_file: Path,
     api_key: Optional[str],
     model: str,
     verbose: bool,
-    output: Optional[Path]
+    output: Optional[Path],
+    format: str
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -46,15 +54,18 @@ def main(
         
         # Save to file if requested
         if output:
-            save_results(result, output)
+            save_results(result, output, format)
             console.print(f"[green]Results saved to {output}[/green]")
         
-        # Exit with appropriate code
+        # Print final summary
+        console.print("\n" + "="*50)
         if result.failed_questions > 0:
-            console.print(f"[red]✗ {result.failed_questions} question(s) failed[/red]")
+            console.print(f"[red]✗ {result.failed_questions} question(s) failed out of {result.total_questions}[/red]")
+            console.print(f"[dim]Success rate: {result.success_rate:.1f}%[/dim]")
             sys.exit(1)
         else:
-            console.print(f"[green]✓ All {result.passed_questions} questions passed[/green]")
+            console.print(f"[green]✓ All {result.passed_questions} questions passed![/green]")
+            console.print(f"[dim]Success rate: {result.success_rate:.1f}%[/dim]")
             sys.exit(0)
             
     except Exception as e:
@@ -111,12 +122,70 @@ Success Rate: {result.success_rate:.1f}%
                 console.print(f"[blue]Evaluation:[/blue] {question_result.evaluation_result}")
 
 
-def save_results(result: DocCheckResult, output_path: Path) -> None:
-    """Save results to a JSON file."""
+def save_results(result: DocCheckResult, output_path: Path, format: str = 'auto') -> None:
+    """Save results to a file in the specified format."""
     import json
     
+    # Auto-detect format from file extension
+    if format == 'auto':
+        suffix = output_path.suffix.lower()
+        if suffix in ['.yaml', '.yml']:
+            format = 'yaml'
+        else:
+            format = 'json'
+    
+    data = result.model_dump()
+    
     with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(result.model_dump(), f, indent=2, ensure_ascii=False)
+        if format == 'yaml':
+            yaml.dump(data, f, default_flow_style=False, allow_unicode=True, indent=2)
+        else:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+
+@cli.command()
+@click.argument('config_file', type=click.Path(exists=True, path_type=Path))
+def validate(config_file: Path) -> None:
+    """Validate a configuration file without running checks."""
+    console = Console()
+    
+    try:
+        checker = DocumentChecker()
+        config = checker.load_config(config_file)
+        
+        console.print(f"[green]✓ Configuration is valid[/green]")
+        console.print(f"Document: {config.file}")
+        console.print(f"Questions: {len(config.questions)}")
+        
+        for i, question in enumerate(config.questions, 1):
+            console.print(f"  {i}. {question.name}")
+            
+    except Exception as e:
+        console.print(f"[red]✗ Configuration validation failed: {e}[/red]")
+        sys.exit(1)
+
+
+# For backwards compatibility, make the main command the default
+@click.command()
+@click.argument('config_file', type=click.Path(exists=True, path_type=Path))
+@click.option('--api-key', help='OpenAI API key (or set OPENAI_API_KEY env var)')
+@click.option('--model', default='gpt-4', help='OpenAI model to use (default: gpt-4)')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
+@click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
+def main(
+    config_file: Path,
+    api_key: Optional[str],
+    model: str,
+    verbose: bool,
+    output: Optional[Path],
+    format: str
+) -> None:
+    """Check documentation using LLM-based Q&A evaluation.
+    
+    CONFIG_FILE: Path to the doc-check.yaml configuration file.
+    """
+    return check(config_file, api_key, model, verbose, output, format)
 
 
 if __name__ == '__main__':

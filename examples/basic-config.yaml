@@ -1,0 +1,17 @@
+file: README.md
+questions:
+  - name: installation
+    question: How do I install this software?
+    answerEvaluation: |
+      The answer should provide clear installation instructions, including:
+      - Prerequisites or system requirements
+      - Step-by-step installation commands
+      - How to verify the installation worked
+
+  - name: getting started
+    question: How do I get started using this tool?
+    answerEvaluation: |
+      The answer should include:
+      - Basic usage examples
+      - Common first steps
+      - Links to more detailed documentation if available

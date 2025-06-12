@@ -1,0 +1,29 @@
+file: https://raw.githubusercontent.com/jumpstarter-dev/jumpstarter/main/README.md
+questions:
+  - name: architecture overview
+    question: What is the overall architecture of Jumpstarter?
+    answerEvaluation: |
+      The answer should explain:
+      - The client/server model
+      - Key components (clients, drivers, exporters, controllers)
+      - How components interact with each other
+      - The difference between local and distributed modes
+
+  - name: driver development
+    question: How do I create a custom driver for new hardware?
+    answerEvaluation: |
+      The answer should cover:
+      - The driver architecture pattern
+      - Required base classes and interfaces
+      - The @export decorator usage
+      - Client/server implementation requirements
+      - Testing and packaging guidelines
+
+  - name: security model
+    question: How does Jumpstarter handle authentication and security?
+    answerEvaluation: |
+      The answer should mention:
+      - JWT token-based authentication
+      - Driver package allowlists
+      - Access control mechanisms
+      - Security considerations for multi-user environments

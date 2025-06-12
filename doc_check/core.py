@@ -1,13 +1,16 @@
 """Core functionality for document checking."""
 
 import os
+import re
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
+from urllib.request import urlopen
 
 import yaml
 from openai import OpenAI
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from .models import DocCheckConfig, DocCheckResult, QuestionResult
 
@@ -31,15 +34,61 @@ class DocumentChecker:
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
-            return DocCheckConfig(**data)
+            
+            # Validate required fields
+            if not data:
+                raise ValueError("Configuration file is empty")
+            
+            if 'file' not in data:
+                raise ValueError("Configuration must specify 'file' field")
+                
+            if 'questions' not in data or not data['questions']:
+                raise ValueError("Configuration must specify at least one question")
+            
+            config = DocCheckConfig(**data)
+            
+            # Validate questions
+            for i, question in enumerate(config.questions):
+                if not question.name.strip():
+                    raise ValueError(f"Question {i+1} must have a non-empty name")
+                if not question.question.strip():
+                    raise ValueError(f"Question '{question.name}' must have a non-empty question")
+                if not question.answerEvaluation.strip():
+                    raise ValueError(f"Question '{question.name}' must have non-empty answerEvaluation")
+            
+            return config
         except Exception as e:
             raise ValueError(f"Failed to load config from {config_path}: {e}")
     
     def load_document(self, doc_path: Path) -> str:
-        """Load document content from file."""
+        """Load document content from file or URL."""
+        doc_str = str(doc_path)
+        
+        # Check if it's a URL
+        if doc_str.startswith(('http://', 'https://')):
+            try:
+                with urlopen(doc_str) as response:
+                    content = response.read()
+                    # Try to decode as UTF-8, fallback to latin-1
+                    try:
+                        return content.decode('utf-8')
+                    except UnicodeDecodeError:
+                        return content.decode('latin-1')
+            except Exception as e:
+                raise ValueError(f"Failed to load document from URL {doc_str}: {e}")
+        
+        # Handle local file
         try:
             with open(doc_path, 'r', encoding='utf-8') as f:
-                return f.read()
+                content = f.read()
+                
+            # Basic validation
+            if not content.strip():
+                raise ValueError(f"Document {doc_path} is empty")
+                
+            return content
+        except FileNotFoundError:
+            raise ValueError(f"Document file not found: {doc_path}")
         except Exception as e:
             raise ValueError(f"Failed to load document from {doc_path}: {e}")
     
@@ -97,20 +146,41 @@ EXPLANATION: [Your explanation]"""
             
             evaluation_text = response.choices[0].message.content or ""
             
-            # Parse the result
-            lines = evaluation_text.strip().split('\n')
-            result_line = next((line for line in lines if line.startswith('RESULT:')), '')
-            explanation_line = next((line for line in lines if line.startswith('EXPLANATION:')), '')
+            # Improved parsing with multiple strategies
+            passed = False
+            explanation = evaluation_text
             
-            if 'PASS' in result_line.upper():
-                passed = True
-            elif 'FAIL' in result_line.upper():
-                passed = False
+            # Strategy 1: Look for structured format
+            result_match = re.search(r'RESULT:\s*(PASS|FAIL)', evaluation_text, re.IGNORECASE)
+            explanation_match = re.search(r'EXPLANATION:\s*(.+)', evaluation_text, re.IGNORECASE | re.DOTALL)
+            
+            if result_match:
+                passed = result_match.group(1).upper() == 'PASS'
+                if explanation_match:
+                    explanation = explanation_match.group(1).strip()
             else:
-                # Fallback: look for pass/fail in the text
-                passed = 'PASS' in evaluation_text.upper() and 'FAIL' not in evaluation_text.upper()
-            
-            explanation = explanation_line.replace('EXPLANATION:', '').strip() if explanation_line else evaluation_text
+                # Strategy 2: Look for pass/fail patterns in text
+                pass_indicators = ['PASS', 'passes', 'meets the criteria', 'satisfies', 'adequate', 'sufficient']
+                fail_indicators = ['FAIL', 'fails', 'does not meet', 'insufficient', 'inadequate', 'missing']
+                
+                text_upper = evaluation_text.upper()
+                pass_count = sum(1 for indicator in pass_indicators if indicator.upper() in text_upper)
+                fail_count = sum(1 for indicator in fail_indicators if indicator.upper() in text_upper)
+                
+                # If we have clear indicators, use them
+                if pass_count > fail_count:
+                    passed = True
+                elif fail_count > pass_count:
+                    passed = False
+                else:
+                    # Strategy 3: Look at the overall sentiment/tone
+                    positive_words = ['good', 'correct', 'accurate', 'comprehensive', 'detailed', 'complete']
+                    negative_words = ['poor', 'incorrect', 'inaccurate', 'incomplete', 'missing', 'lacks']
+                    
+                    positive_count = sum(1 for word in positive_words if word in text_upper)
+                    negative_count = sum(1 for word in negative_words if word in text_upper)
+                    
+                    passed = positive_count > negative_count
             
             return passed, explanation
             
@@ -131,22 +201,27 @@ EXPLANATION: [Your explanation]"""
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
             console=self.console
         ) as progress:
             
+            main_task = progress.add_task(
+                f"Processing {len(config.questions)} questions",
+                total=len(config.questions)
+            )
+            
             for i, question_config in enumerate(config.questions, 1):
-                task = progress.add_task(
-                    f"Processing question {i}/{len(config.questions)}: {question_config.name}",
-                    total=None
-                )
+                progress.update(main_task, description=f"Question {i}/{len(config.questions)}: {question_config.name}")
                 
                 try:
                     # Ask the question
-                    progress.update(task, description=f"Asking question: {question_config.name}")
+                    self.console.print(f"[blue]Asking:[/blue] {question_config.name}")
                     answer = self.ask_question(document_content, question_config.question)
                     
                     # Evaluate the answer
-                    progress.update(task, description=f"Evaluating answer: {question_config.name}")
+                    self.console.print(f"[yellow]Evaluating:[/yellow] {question_config.name}")
                     passed, evaluation_result = self.evaluate_answer(
                         question_config.question,
                         answer,
@@ -161,7 +236,12 @@ EXPLANATION: [Your explanation]"""
                         passed=passed
                     )
                     
+                    # Show immediate result
+                    status = "[green]✓ PASS[/green]" if passed else "[red]✗ FAIL[/red]"
+                    self.console.print(f"[dim]Result:[/dim] {status} - {question_config.name}")
+                    
                 except Exception as e:
+                    self.console.print(f"[red]Error processing {question_config.name}: {e}[/red]")
                     result = QuestionResult(
                         name=question_config.name,
                         question=question_config.question,
@@ -172,7 +252,7 @@ EXPLANATION: [Your explanation]"""
                     )
                 
                 results.append(result)
-                progress.remove_task(task)
+                progress.update(main_task, advance=1)
         
         # Calculate summary
         passed_count = sum(1 for r in results if r.passed)
