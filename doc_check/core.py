@@ -36,7 +36,7 @@ class DocumentChecker:
             self.openai_client = None
             # Set default Claude model if using default OpenAI model
             if model == "gpt-4":
-                self.model = "claude-3-sonnet-20240229"
+                self.model = "claude-3-5-sonnet-20241022"
         else:
             self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
             self.anthropic_client = None
