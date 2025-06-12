@@ -17,6 +17,29 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeEl
 from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
 
 
+def detect_provider_from_model(model: str) -> str:
+    """Detect the API provider based on the model name.
+    
+    Args:
+        model: The model name to check
+        
+    Returns:
+        The detected provider ('openai' or 'anthropic')
+    """
+    model_lower = model.lower()
+    
+    # Anthropic models
+    if any(pattern in model_lower for pattern in ['claude', 'sonnet', 'haiku', 'opus']):
+        return 'anthropic'
+    
+    # OpenAI models
+    if any(pattern in model_lower for pattern in ['gpt', 'davinci', 'curie', 'babbage', 'ada']):
+        return 'openai'
+    
+    # Default to openai for unknown models
+    return 'openai'
+
+
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     

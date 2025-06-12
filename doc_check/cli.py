@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .core import DocumentChecker
+from .core import DocumentChecker, detect_provider_from_model
 from .models import DocCheckResult
 
 
@@ -47,6 +47,14 @@ def check(
         # Set default model if not specified
         if model is None:
             model = "claude-sonnet-4-20250514" if provider == "anthropic" else "gpt-4"
+        
+        # Auto-detect provider from model if not explicitly set to non-default
+        # We check if provider is still the default 'openai' and if the model suggests otherwise
+        if provider == "openai":  # This is the default value
+            detected_provider = detect_provider_from_model(model)
+            if detected_provider != "openai":
+                provider = detected_provider
+                console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
         
         # Initialize checker
         checker = DocumentChecker(api_key=api_key, model=model, provider=provider)
@@ -209,6 +217,20 @@ def main(
     
     CONFIG_FILE: Path to the doc-check.yaml configuration file.
     """
+    # Apply the same auto-detection logic for the main function
+    console = Console()
+    
+    # Set default model if not specified
+    if model is None:
+        model = "claude-sonnet-4-20250514" if provider == "anthropic" else "gpt-4"
+    
+    # Auto-detect provider from model if not explicitly set to non-default
+    if provider == "openai":  # This is the default value
+        detected_provider = detect_provider_from_model(model)
+        if detected_provider != "openai":
+            provider = detected_provider
+            console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
+    
     return check(config_file, api_key, model, provider, verbose, output, format)
 
 
