@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, Literal
 from urllib.parse import urlparse
 from urllib.request import urlopen
+from datetime import datetime
 
 import yaml
 from openai import OpenAI
@@ -13,7 +14,7 @@ import anthropic
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
-from .models import DocCheckConfig, DocCheckResult, QuestionResult
+from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
 
 
 class DocumentChecker:
@@ -30,6 +31,7 @@ class DocumentChecker:
         self.provider = provider
         self.model = model
         self.console = Console()
+        self.api_usage = ApiUsage(provider=provider, model=model)
         
         if provider == "anthropic":
             self.anthropic_client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
@@ -37,6 +39,7 @@ class DocumentChecker:
             # Set default Claude model if using default OpenAI model
             if model == "gpt-4":
                 self.model = "claude-3-5-sonnet-20241022"
+                self.api_usage.model = self.model
         else:
             self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
             self.anthropic_client = None
@@ -131,6 +134,15 @@ Please provide a comprehensive answer based on the information in the document."
                 ],
                 temperature=0.1
             )
+            
+            # Track usage
+            if response.usage:
+                self.api_usage.input_tokens += response.usage.prompt_tokens
+                self.api_usage.output_tokens += response.usage.completion_tokens
+                self.api_usage.total_tokens += response.usage.total_tokens
+                self.api_usage.api_calls += 1
+                self.api_usage.estimated_cost += self._calculate_openai_cost(response.usage)
+            
             return response.choices[0].message.content or ""
         except Exception as e:
             raise RuntimeError(f"Failed to get answer from OpenAI: {e}")
@@ -156,6 +168,15 @@ Please provide a comprehensive answer based on the information in the document."
                     {"role": "user", "content": prompt}
                 ]
             )
+            
+            # Track usage
+            if response.usage:
+                self.api_usage.input_tokens += response.usage.input_tokens
+                self.api_usage.output_tokens += response.usage.output_tokens
+                self.api_usage.total_tokens += response.usage.input_tokens + response.usage.output_tokens
+                self.api_usage.api_calls += 1
+                self.api_usage.estimated_cost += self._calculate_anthropic_cost(response.usage)
+            
             return response.content[0].text
         except Exception as e:
             raise RuntimeError(f"Failed to get answer from Anthropic: {e}")
@@ -195,6 +216,14 @@ EXPLANATION: [Your explanation]"""
                 temperature=0.1
             )
             
+            # Track usage
+            if response.usage:
+                self.api_usage.input_tokens += response.usage.prompt_tokens
+                self.api_usage.output_tokens += response.usage.completion_tokens
+                self.api_usage.total_tokens += response.usage.total_tokens
+                self.api_usage.api_calls += 1
+                self.api_usage.estimated_cost += self._calculate_openai_cost(response.usage)
+            
             evaluation_text = response.choices[0].message.content or ""
             return self._parse_evaluation_result(evaluation_text)
             
@@ -229,6 +258,14 @@ EXPLANATION: [Your explanation]"""
                     {"role": "user", "content": prompt}
                 ]
             )
+            
+            # Track usage
+            if response.usage:
+                self.api_usage.input_tokens += response.usage.input_tokens
+                self.api_usage.output_tokens += response.usage.output_tokens
+                self.api_usage.total_tokens += response.usage.input_tokens + response.usage.output_tokens
+                self.api_usage.api_calls += 1
+                self.api_usage.estimated_cost += self._calculate_anthropic_cost(response.usage)
             
             evaluation_text = response.content[0].text
             return self._parse_evaluation_result(evaluation_text)
@@ -276,8 +313,44 @@ EXPLANATION: [Your explanation]"""
         
         return passed, explanation
     
+    def _calculate_openai_cost(self, usage) -> float:
+        """Calculate estimated cost for OpenAI API usage."""
+        # Pricing as of 2024 (per 1K tokens)
+        pricing = {
+            "gpt-4": {"input": 0.03, "output": 0.06},
+            "gpt-4-turbo": {"input": 0.01, "output": 0.03},
+            "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
+        }
+        
+        # Default to gpt-4 pricing if model not found
+        model_pricing = pricing.get(self.model, pricing["gpt-4"])
+        
+        input_cost = (usage.prompt_tokens / 1000) * model_pricing["input"]
+        output_cost = (usage.completion_tokens / 1000) * model_pricing["output"]
+        
+        return input_cost + output_cost
+    
+    def _calculate_anthropic_cost(self, usage) -> float:
+        """Calculate estimated cost for Anthropic API usage."""
+        # Pricing as of 2024 (per 1K tokens)
+        pricing = {
+            "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
+            "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
+            "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
+        }
+        
+        # Default to sonnet pricing if model not found
+        model_pricing = pricing.get(self.model, pricing["claude-3-5-sonnet-20241022"])
+        
+        input_cost = (usage.input_tokens / 1000) * model_pricing["input"]
+        output_cost = (usage.output_tokens / 1000) * model_pricing["output"]
+        
+        return input_cost + output_cost
+    
     def check_document(self, config_path: Path) -> DocCheckResult:
         """Check a document according to the configuration."""
+        start_time = datetime.now()
+        
         # Load configuration
         config = self.load_config(config_path)
         
@@ -343,6 +416,8 @@ EXPLANATION: [Your explanation]"""
                 results.append(result)
                 progress.update(main_task, advance=1)
         
+        end_time = datetime.now()
+        
         # Calculate summary
         passed_count = sum(1 for r in results if r.passed)
         failed_count = len(results) - passed_count
@@ -351,5 +426,8 @@ EXPLANATION: [Your explanation]"""
             total_questions=len(results),
             passed_questions=passed_count,
             failed_questions=failed_count,
-            results=results
+            results=results,
+            api_usage=self.api_usage,
+            start_time=start_time,
+            end_time=end_time
         )

@@ -87,8 +87,23 @@ def display_results(console: Console, result: DocCheckResult, verbose: bool) -> 
 Total Questions: {result.total_questions}
 Passed: [green]{result.passed_questions}[/green]
 Failed: [red]{result.failed_questions}[/red]
-Success Rate: {result.success_rate:.1f}%
-"""
+Success Rate: {result.success_rate:.1f}%"""
+    
+    # Add timing information if available
+    if result.duration_seconds:
+        summary_text += f"\nDuration: {result.duration_seconds:.1f}s"
+    
+    # Add API usage information if available
+    if result.api_usage:
+        usage = result.api_usage
+        summary_text += f"""
+API Provider: {usage.provider}
+Model: {usage.model}
+API Calls: {usage.api_calls}
+Total Tokens: {usage.total_tokens:,}
+Input Tokens: {usage.input_tokens:,}
+Output Tokens: {usage.output_tokens:,}
+Estimated Cost: ${usage.estimated_cost:.4f}"""
     
     console.print(Panel(summary_text.strip(), title="Summary", border_style="blue"))
     
