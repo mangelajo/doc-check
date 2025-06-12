@@ -450,8 +450,7 @@ Please provide a thorough summary that retains the essential information needed 
             return summary
             
         except Exception as e:
-            self.console.print(f"[yellow]Warning: Failed to summarize document, using original content: {e}[/yellow]")
-            return document_content
+            raise RuntimeError(f"Failed to summarize document: {e}")
     
     def check_document(self, config_path: Path) -> DocCheckResult:
         """Check a document according to the configuration."""
@@ -467,7 +466,11 @@ Please provide a thorough summary that retains the essential information needed 
         # Summarize document if requested
         if self.summarize:
             self.console.print("[blue]Summarizing document...[/blue]")
-            document_content = self.summarize_document(document_content)
+            try:
+                document_content = self.summarize_document(document_content)
+            except Exception as e:
+                self.console.print(f"[red]Error: {e}[/red]")
+                raise
         
         results = []
         
