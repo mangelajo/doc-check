@@ -446,7 +446,6 @@ Please provide a thorough summary that retains the essential information needed 
                 
                 summary = response.choices[0].message.content or ""
             
-            self.console.print(f"[green]Document summarized successfully[/green] (Original: {len(document_content):,} chars → Summary: {len(summary):,} chars)")
             return summary
             
         except Exception as e:
@@ -465,9 +464,17 @@ Please provide a thorough summary that retains the essential information needed 
         
         # Summarize document if requested
         if self.summarize:
-            self.console.print("[blue]Summarizing document...[/blue]")
             try:
-                document_content = self.summarize_document(document_content)
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=self.console
+                ) as progress:
+                    summarize_task = progress.add_task("Summarizing document...", total=None)
+                    original_length = len(document_content)
+                    document_content = self.summarize_document(document_content)
+                    
+                self.console.print(f"[green]Document summarized successfully[/green] (Original: {original_length:,} chars → Summary: {len(document_content):,} chars)")
             except Exception as e:
                 self.console.print(f"[red]Error: {e}[/red]")
                 raise
