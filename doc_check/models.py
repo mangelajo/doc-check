@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 
 class Question(BaseModel):
@@ -27,12 +28,27 @@ class QuestionResult(BaseModel):
     error: Optional[str] = None
 
 
+class ApiUsage(BaseModel):
+    """Track API usage and costs."""
+    
+    provider: str  # "openai" or "anthropic"
+    model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    estimated_cost: float = 0.0  # in USD
+    api_calls: int = 0
+
+
 class DocCheckResult(BaseModel):
     """Overall result of document checking."""
     total_questions: int
     passed_questions: int
     failed_questions: int
     results: List[QuestionResult]
+    api_usage: Optional[ApiUsage] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
     
     @property
     def success_rate(self) -> float:
@@ -40,3 +56,10 @@ class DocCheckResult(BaseModel):
         if self.total_questions == 0:
             return 0.0
         return (self.passed_questions / self.total_questions) * 100
+    
+    @property
+    def duration_seconds(self) -> Optional[float]:
+        """Calculate duration in seconds."""
+        if self.start_time and self.end_time:
+            return (self.end_time - self.start_time).total_seconds()
+        return None
