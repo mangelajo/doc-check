@@ -38,7 +38,7 @@ class DocumentChecker:
             self.openai_client = None
             # Set default Claude model if using default OpenAI model
             if model == "gpt-4":
-                self.model = "claude-3-5-sonnet-20241022"
+                self.model = "claude-sonnet-4-20250514"
                 self.api_usage.model = self.model
         else:
             self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
@@ -334,13 +334,14 @@ EXPLANATION: [Your explanation]"""
         """Calculate estimated cost for Anthropic API usage."""
         # Pricing as of 2024 (per 1K tokens)
         pricing = {
+            "claude-sonnet-4-20250514": {"input": 0.003, "output": 0.015},
             "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
             "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
             "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
         }
         
         # Default to sonnet pricing if model not found
-        model_pricing = pricing.get(self.model, pricing["claude-3-5-sonnet-20241022"])
+        model_pricing = pricing.get(self.model, pricing["claude-sonnet-4-20250514"])
         
         input_cost = (usage.input_tokens / 1000) * model_pricing["input"]
         output_cost = (usage.output_tokens / 1000) * model_pricing["output"]
