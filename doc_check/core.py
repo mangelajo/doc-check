@@ -360,6 +360,7 @@ EXPLANATION: [Your explanation]"""
     def _calculate_anthropic_cost(self, usage) -> float:
         """Calculate estimated cost for Anthropic API usage."""
         # Pricing as of December 2024 (per 1K tokens)
+        # Source: https://docs.anthropic.com/en/docs/about-claude/pricing
         pricing = {
             # Claude 4 models
             "claude-opus-4": {"input": 0.015, "output": 0.075},
