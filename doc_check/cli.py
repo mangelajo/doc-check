@@ -125,6 +125,7 @@ Success Rate: {result.success_rate:.1f}%
 def save_results(result: DocCheckResult, output_path: Path, format: str = 'auto') -> None:
     """Save results to a file in the specified format."""
     import json
+    import yaml
     
     # Auto-detect format from file extension
     if format == 'auto':
