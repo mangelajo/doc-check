@@ -2,6 +2,7 @@
 
 import os
 import re
+import hashlib
 from pathlib import Path
 from typing import Optional, Literal
 from urllib.parse import urlparse
@@ -434,8 +435,49 @@ class DocumentChecker:
         
         return input_cost + output_cost
     
-    def summarize_document(self, document_content: str) -> str:
+    def _get_document_hash(self, content: str) -> str:
+        """Calculate SHA1 hash of document content."""
+        return hashlib.sha1(content.encode('utf-8')).hexdigest()
+    
+    def _get_cache_filename(self, doc_path: Path, content_hash: str, level: str, model: str) -> Path:
+        """Generate cache filename for summarized document."""
+        # Clean model name for filename (replace problematic characters)
+        clean_model = re.sub(r'[^\w\-.]', '_', model)
+        cache_name = f"{doc_path.name}.{content_hash}.summary.{level}.{clean_model}"
+        return doc_path.parent / cache_name
+    
+    def _load_cached_summary(self, cache_path: Path) -> Optional[str]:
+        """Load cached summary if it exists."""
+        if cache_path.exists():
+            try:
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception:
+                # If we can't read the cache file, ignore it
+                pass
+        return None
+    
+    def _save_cached_summary(self, cache_path: Path, summary: str) -> None:
+        """Save summary to cache file."""
+        try:
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                f.write(summary)
+        except Exception:
+            # If we can't write the cache file, just continue without caching
+            pass
+    
+    def summarize_document(self, document_content: str, doc_path: Path) -> str:
         """Summarize the document content using the summarizer model."""
+        # Calculate hash of document content for caching
+        content_hash = self._get_document_hash(document_content)
+        cache_path = self._get_cache_filename(doc_path, content_hash, self.summarize, self.summarizer_model)
+        
+        # Check for cached summary
+        cached_summary = self._load_cached_summary(cache_path)
+        if cached_summary:
+            self.console.print(f"[green]Using cached summary[/green] ({cache_path.name})")
+            return cached_summary
+        
         # Detect provider for summarizer model
         summarizer_provider = detect_provider_from_model(self.summarizer_model)
         
@@ -497,6 +539,9 @@ class DocumentChecker:
                 
                 summary = response.choices[0].message.content or ""
             
+            # Save summary to cache
+            self._save_cached_summary(cache_path, summary)
+            
             return summary
             
         except Exception as e:
@@ -523,7 +568,7 @@ class DocumentChecker:
                 ) as progress:
                     summarize_task = progress.add_task(f"Summarizing document ({self.summarize} level)...", total=None)
                     original_length = len(document_content)
-                    document_content = self.summarize_document(document_content)
+                    document_content = self.summarize_document(document_content, doc_path)
                     
                 reduction_pct = ((original_length - len(document_content)) / original_length) * 100
                 self.console.print(f"[green]Document summarized successfully ({self.summarize} level)[/green] (Original: {original_length:,} chars → Summary: {len(document_content):,} chars, {reduction_pct:.1f}% reduction)")
