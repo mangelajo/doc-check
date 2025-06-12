@@ -1,0 +1,22 @@
+file: output.md
+questions:
+   - name: installation options
+     # the question is passed to the LLM with the document context, perhaps a summary, or accessible in RAG.
+     question: |
+       What are the install options for jumpstarter?
+     
+     # once the answer from the LLM has been obtained, we should use the expectedInAnswer to evaluate
+     # the provided answer with the following criteria, this context should not be passed to the LLM
+     # when asking the question.
+     answerEvaluation: |
+       The answer should contain details on installing jumpstarter with pip locally,
+       but also explain that the distributed service can be installed with helm or
+       argoCD into a cluster.
+
+       It should recommend using a virtual environment for python.
+
+   - name: installing with pip
+     question: When installing with pip, how can I install the latest version from main.
+     answerEvaluation: |
+       Two methods should be offered, one is installing from git and using uv or make, the
+       other option should include using pip3 install --extra-index-url https://pkg.jumpstarter.dev/main/simple jumpstarter-all
