@@ -28,11 +28,10 @@ pip install -e .
 
 ### Commands
 
-Doc-Check provides several commands:
+Doc-Check provides two commands:
 
 - `doc-check check`: Check documentation quality using LLM evaluation
 - `doc-check validate`: Validate configuration file format
-- `doc-check main`: Alternative entry point for checking (same as check)
 
 ### Basic Usage
 
@@ -68,12 +67,12 @@ doc-check check doc-check.yaml
 
 - `--api-key`: API key (alternative to environment variable)
 - `--model`: Model to use (auto-detects provider from model name)
-- `--provider`: Explicitly specify provider (openai or anthropic)
+- `--provider`: Explicitly specify provider (openai or anthropic, default: openai)
 - `--verbose, -v`: Show detailed output including full answers
-- `--output, -o`: Save results to file
-- `--format`: Output format (json, yaml, or auto)
-- `--summarize`: Summarization level (minimal, moderate, aggressive)
-- `--summarizer-model`: Model to use for document summarization
+- `--output, -o`: Save results to file (JSON/YAML based on extension)
+- `--format`: Output format (json, yaml, or auto - auto-detects from file extension)
+- `--summarize`: Summarization level (minimal, light, medium, aggressive)
+- `--summarizer-model`: Model to use for document summarization (default: claude-sonnet-4-20250514)
 
 ### Validate Command
 
@@ -99,7 +98,7 @@ doc-check check doc-check.yaml --model gpt-4.1 --provider openai
 doc-check check doc-check.yaml --model claude-sonnet-4-20250514
 
 # Summarize document before checking (for large documents)
-doc-check check doc-check.yaml --summarize minimal
+doc-check check doc-check.yaml --summarize light
 
 # Validate configuration only
 doc-check validate doc-check.yaml
@@ -110,20 +109,20 @@ doc-check validate doc-check.yaml
 Doc-Check supports both OpenAI and Anthropic models with automatic provider detection:
 
 ### OpenAI Models
-- `gpt-4.1` (default)
+- `gpt-4.1` (default for OpenAI)
 - `gpt-4.1-mini`
 - `gpt-4.1-nano`
-- `gpt-4.5-turbo`
-- And other GPT models
+- `gpt-4o`
+- `gpt-4o-mini`
+- `gpt-4.5-preview`
 
 ### Anthropic Models
 - `claude-sonnet-4-20250514` (default for Anthropic)
-- `claude-opus-4`
-- `claude-sonnet-3.7`
 - `claude-3-5-sonnet-20241022`
-- And other Claude models
+- `claude-3-sonnet-20240229`
+- `claude-3-haiku-20240307`
 
-The provider is automatically detected from the model name, or you can specify it explicitly with `--provider`.
+The provider is automatically detected from the model name, or you can specify it explicitly with `--provider`. The default provider is OpenAI.
 
 ## Configuration Format
 
