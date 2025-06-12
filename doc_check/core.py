@@ -10,47 +10,11 @@ from urllib.request import urlopen
 from datetime import datetime
 
 import yaml
-from openai import OpenAI
-import anthropic
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
-from .pricing import OPENAI_PRICING, ANTHROPIC_PRICING
-
-# System prompts
-QUESTION_ANSWERING_SYSTEM_PROMPT = "You are a helpful assistant that answers questions about documentation accurately and comprehensively."
-
-EVALUATION_SYSTEM_PROMPT = "You are an expert evaluator. Carefully assess whether the answer meets the specified criteria. Be strict but fair in your evaluation."
-
-SUMMARIZATION_SYSTEM_PROMPT = "You are an expert document summarizer. Create comprehensive, detailed summaries that preserve all important information."
-
-# Question answering prompt template
-QUESTION_PROMPT_TEMPLATE = """Based on the following document, please answer this question:
-
-Question: {question}
-
-Document:
-{document_content}
-
-Please provide a comprehensive answer based on the information in the document."""
-
-# Evaluation prompt template
-EVALUATION_PROMPT_TEMPLATE = """Please evaluate the following answer against the given criteria.
-
-Question: {question}
-
-Answer: {answer}
-
-Evaluation Criteria: {evaluation_criteria}
-
-Please respond with:
-1. PASS or FAIL
-2. A brief explanation of your evaluation
-
-Format your response as:
-RESULT: [PASS/FAIL]
-EXPLANATION: [Your explanation]"""
+from .providers import OpenAIProvider, AnthropicProvider
 
 # Summarization prompt templates
 SUMMARIZATION_PROMPTS = {
@@ -112,12 +76,6 @@ DEFAULT_OPENAI_MODEL = "gpt-4.1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-20250514"
 
-# API configuration
-OPENAI_MAX_TOKENS = 4000
-ANTHROPIC_MAX_TOKENS = 4000
-ANTHROPIC_SUMMARIZER_MAX_TOKENS = 8000
-DEFAULT_TEMPERATURE = 0.1
-
 
 
 def detect_provider_from_model(model: str) -> str:
@@ -161,18 +119,25 @@ class DocumentChecker:
         self.summarize = summarize
         self.summarizer_model = summarizer_model or DEFAULT_SUMMARIZER_MODEL
         self.console = Console()
-        self.api_usage = ApiUsage(provider=provider, model=model)
         
+        # Initialize the main provider
         if provider == "anthropic":
-            self.anthropic_client = anthropic.Anthropic(api_key=api_key or os.getenv("ANTHROPIC_API_KEY"))
-            self.openai_client = None
             # Set default Claude model if using default OpenAI model
             if model == DEFAULT_OPENAI_MODEL:
                 self.model = DEFAULT_ANTHROPIC_MODEL
-                self.api_usage.model = self.model
+            self.main_provider = AnthropicProvider(api_key=api_key, model=self.model)
         else:
-            self.openai_client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
-            self.anthropic_client = None
+            self.main_provider = OpenAIProvider(api_key=api_key, model=self.model)
+        
+        # Initialize the summarizer provider (may be different from main provider)
+        summarizer_provider_type = detect_provider_from_model(self.summarizer_model)
+        if summarizer_provider_type == "anthropic":
+            self.summarizer_provider = AnthropicProvider(api_key=api_key, model=self.summarizer_model)
+        else:
+            self.summarizer_provider = OpenAIProvider(api_key=api_key, model=self.summarizer_model)
+        
+        # Use the main provider's API usage for tracking
+        self.api_usage = self.main_provider.api_usage
     
     def load_config(self, config_path: Path) -> DocCheckConfig:
         """Load configuration from YAML file."""
@@ -239,201 +204,14 @@ class DocumentChecker:
     
     def ask_question(self, document_content: str, question: str) -> str:
         """Ask a question about the document using LLM."""
-        if self.provider == "anthropic":
-            return self._ask_question_anthropic(document_content, question)
-        else:
-            return self._ask_question_openai(document_content, question)
+        return self.main_provider.ask(document_content, question)
     
-    def _ask_question_openai(self, document_content: str, question: str) -> str:
-        """Ask a question using OpenAI API."""
-        prompt = QUESTION_PROMPT_TEMPLATE.format(
-            question=question,
-            document_content=document_content
-        )
-
-        try:
-            response = self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": QUESTION_ANSWERING_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=DEFAULT_TEMPERATURE
-            )
-            
-            # Track usage
-            if response.usage:
-                self.api_usage.input_tokens += response.usage.prompt_tokens
-                self.api_usage.output_tokens += response.usage.completion_tokens
-                self.api_usage.total_tokens += response.usage.total_tokens
-                self.api_usage.api_calls += 1
-                self.api_usage.estimated_cost += self._calculate_openai_cost(response.usage)
-            
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            raise RuntimeError(f"Failed to get answer from OpenAI: {e}")
-    
-    def _ask_question_anthropic(self, document_content: str, question: str) -> str:
-        """Ask a question using Anthropic API."""
-        prompt = QUESTION_PROMPT_TEMPLATE.format(
-            question=question,
-            document_content=document_content
-        )
-
-        try:
-            response = self.anthropic_client.messages.create(
-                model=self.model,
-                max_tokens=ANTHROPIC_MAX_TOKENS,
-                temperature=DEFAULT_TEMPERATURE,
-                system=QUESTION_ANSWERING_SYSTEM_PROMPT,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            # Track usage
-            if response.usage:
-                self.api_usage.input_tokens += response.usage.input_tokens
-                self.api_usage.output_tokens += response.usage.output_tokens
-                self.api_usage.total_tokens += response.usage.input_tokens + response.usage.output_tokens
-                self.api_usage.api_calls += 1
-                self.api_usage.estimated_cost += self._calculate_anthropic_cost(response.usage)
-            
-            return response.content[0].text
-        except Exception as e:
-            raise RuntimeError(f"Failed to get answer from Anthropic: {e}")
     
     def evaluate_answer(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
         """Evaluate an answer against criteria using LLM."""
-        if self.provider == "anthropic":
-            return self._evaluate_answer_anthropic(question, answer, evaluation_criteria)
-        else:
-            return self._evaluate_answer_openai(question, answer, evaluation_criteria)
+        return self.main_provider.evaluate(question, answer, evaluation_criteria)
     
-    def _evaluate_answer_openai(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
-        """Evaluate an answer using OpenAI API."""
-        prompt = EVALUATION_PROMPT_TEMPLATE.format(
-            question=question,
-            answer=answer,
-            evaluation_criteria=evaluation_criteria
-        )
-
-        try:
-            response = self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": EVALUATION_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=DEFAULT_TEMPERATURE
-            )
-            
-            # Track usage
-            if response.usage:
-                self.api_usage.input_tokens += response.usage.prompt_tokens
-                self.api_usage.output_tokens += response.usage.completion_tokens
-                self.api_usage.total_tokens += response.usage.total_tokens
-                self.api_usage.api_calls += 1
-                self.api_usage.estimated_cost += self._calculate_openai_cost(response.usage)
-            
-            evaluation_text = response.choices[0].message.content or ""
-            return self._parse_evaluation_result(evaluation_text)
-            
-        except Exception as e:
-            raise RuntimeError(f"Failed to evaluate answer with OpenAI: {e}")
     
-    def _evaluate_answer_anthropic(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
-        """Evaluate an answer using Anthropic API."""
-        prompt = EVALUATION_PROMPT_TEMPLATE.format(
-            question=question,
-            answer=answer,
-            evaluation_criteria=evaluation_criteria
-        )
-
-        try:
-            response = self.anthropic_client.messages.create(
-                model=self.model,
-                max_tokens=2000,
-                temperature=DEFAULT_TEMPERATURE,
-                system=EVALUATION_SYSTEM_PROMPT,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            # Track usage
-            if response.usage:
-                self.api_usage.input_tokens += response.usage.input_tokens
-                self.api_usage.output_tokens += response.usage.output_tokens
-                self.api_usage.total_tokens += response.usage.input_tokens + response.usage.output_tokens
-                self.api_usage.api_calls += 1
-                self.api_usage.estimated_cost += self._calculate_anthropic_cost(response.usage)
-            
-            evaluation_text = response.content[0].text
-            return self._parse_evaluation_result(evaluation_text)
-            
-        except Exception as e:
-            raise RuntimeError(f"Failed to evaluate answer with Anthropic: {e}")
-    
-    def _parse_evaluation_result(self, evaluation_text: str) -> tuple[bool, str]:
-        """Parse the evaluation result from LLM response."""
-        # Improved parsing with multiple strategies
-        passed = False
-        explanation = evaluation_text
-        
-        # Strategy 1: Look for structured format
-        result_match = re.search(r'RESULT:\s*(PASS|FAIL)', evaluation_text, re.IGNORECASE)
-        explanation_match = re.search(r'EXPLANATION:\s*(.+)', evaluation_text, re.IGNORECASE | re.DOTALL)
-        
-        if result_match:
-            passed = result_match.group(1).upper() == 'PASS'
-            if explanation_match:
-                explanation = explanation_match.group(1).strip()
-        else:
-            # Strategy 2: Look for pass/fail patterns in text
-            pass_indicators = ['PASS', 'passes', 'meets the criteria', 'satisfies', 'adequate', 'sufficient']
-            fail_indicators = ['FAIL', 'fails', 'does not meet', 'insufficient', 'inadequate', 'missing']
-            
-            text_upper = evaluation_text.upper()
-            pass_count = sum(1 for indicator in pass_indicators if indicator.upper() in text_upper)
-            fail_count = sum(1 for indicator in fail_indicators if indicator.upper() in text_upper)
-            
-            # If we have clear indicators, use them
-            if pass_count > fail_count:
-                passed = True
-            elif fail_count > pass_count:
-                passed = False
-            else:
-                # Strategy 3: Look at the overall sentiment/tone
-                positive_words = ['good', 'correct', 'accurate', 'comprehensive', 'detailed', 'complete']
-                negative_words = ['poor', 'incorrect', 'inaccurate', 'incomplete', 'missing', 'lacks']
-                
-                positive_count = sum(1 for word in positive_words if word in text_upper)
-                negative_count = sum(1 for word in negative_words if word in text_upper)
-                
-                passed = positive_count > negative_count
-        
-        return passed, explanation
-    
-    def _calculate_openai_cost(self, usage) -> float:
-        """Calculate estimated cost for OpenAI API usage."""
-        # Default to gpt-4.1 pricing if model not found
-        model_pricing = OPENAI_PRICING.get(self.model, OPENAI_PRICING[DEFAULT_OPENAI_MODEL])
-        
-        input_cost = (usage.prompt_tokens / 1000) * model_pricing["input"]
-        output_cost = (usage.completion_tokens / 1000) * model_pricing["output"]
-        
-        return input_cost + output_cost
-    
-    def _calculate_anthropic_cost(self, usage) -> float:
-        """Calculate estimated cost for Anthropic API usage."""
-        # Default to sonnet 4 pricing if model not found
-        model_pricing = ANTHROPIC_PRICING.get(self.model, ANTHROPIC_PRICING[DEFAULT_ANTHROPIC_MODEL])
-        
-        input_cost = (usage.input_tokens / 1000) * model_pricing["input"]
-        output_cost = (usage.output_tokens / 1000) * model_pricing["output"]
-        
-        return input_cost + output_cost
     
     def _get_document_hash(self, content: str) -> str:
         """Calculate SHA1 hash of document content."""
@@ -486,58 +264,20 @@ class DocumentChecker:
         prompt = prompt_template.format(document_content=document_content)
 
         try:
-            if summarizer_provider == "anthropic":
-                # Initialize Anthropic client for summarization if needed
-                if not hasattr(self, 'summarizer_anthropic_client'):
-                    self.summarizer_anthropic_client = anthropic.Anthropic(
-                        api_key=os.getenv("ANTHROPIC_API_KEY")
-                    )
-                
-                response = self.summarizer_anthropic_client.messages.create(
-                    model=self.summarizer_model,
-                    max_tokens=ANTHROPIC_SUMMARIZER_MAX_TOKENS,
-                    temperature=DEFAULT_TEMPERATURE,
-                    system=SUMMARIZATION_SYSTEM_PROMPT,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                
-                # Track usage for summarization
-                if response.usage:
-                    self.api_usage.input_tokens += response.usage.input_tokens
-                    self.api_usage.output_tokens += response.usage.output_tokens
-                    self.api_usage.total_tokens += response.usage.input_tokens + response.usage.output_tokens
-                    self.api_usage.api_calls += 1
-                    self.api_usage.estimated_cost += self._calculate_anthropic_cost(response.usage)
-                
-                summary = response.content[0].text
-                
-            else:
-                # Initialize OpenAI client for summarization if needed
-                if not hasattr(self, 'summarizer_openai_client'):
-                    self.summarizer_openai_client = OpenAI(
-                        api_key=os.getenv("OPENAI_API_KEY")
-                    )
-                
-                response = self.summarizer_openai_client.chat.completions.create(
-                    model=self.summarizer_model,
-                    messages=[
-                        {"role": "system", "content": SUMMARIZATION_SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=DEFAULT_TEMPERATURE
-                )
-                
-                # Track usage for summarization
-                if response.usage:
-                    self.api_usage.input_tokens += response.usage.prompt_tokens
-                    self.api_usage.output_tokens += response.usage.completion_tokens
-                    self.api_usage.total_tokens += response.usage.total_tokens
-                    self.api_usage.api_calls += 1
-                    self.api_usage.estimated_cost += self._calculate_openai_cost(response.usage)
-                
-                summary = response.choices[0].message.content or ""
+            summary = self.summarizer_provider.summarize(prompt)
+            
+            # Merge summarizer usage into main API usage tracking
+            self.api_usage.input_tokens += self.summarizer_provider.api_usage.input_tokens
+            self.api_usage.output_tokens += self.summarizer_provider.api_usage.output_tokens
+            self.api_usage.total_tokens += self.summarizer_provider.api_usage.total_tokens
+            self.api_usage.api_calls += self.summarizer_provider.api_usage.api_calls
+            self.api_usage.estimated_cost += self.summarizer_provider.api_usage.estimated_cost
+            
+            # Reset summarizer usage to avoid double counting
+            self.summarizer_provider.api_usage = type(self.summarizer_provider.api_usage)(
+                provider=self.summarizer_provider.api_usage.provider,
+                model=self.summarizer_provider.api_usage.model
+            )
             
             # Save summary to cache
             self._save_cached_summary(cache_path, summary)
