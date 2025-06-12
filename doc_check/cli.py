@@ -12,7 +12,11 @@ from rich.text import Text
 
 from .core import DocumentChecker, detect_provider_from_model
 from .models import DocCheckResult
-from .constants import DEFAULT_OPENAI_MODEL, DEFAULT_ANTHROPIC_MODEL, DEFAULT_SUMMARIZER_MODEL
+
+# Default models
+DEFAULT_OPENAI_MODEL = "gpt-4"
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-20250514"
 
 
 @click.group()
