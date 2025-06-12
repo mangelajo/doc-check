@@ -381,7 +381,21 @@ EXPLANATION: [Your explanation]"""
         summarizer_provider = detect_provider_from_model(self.summarizer_model)
         
         # Define summarization prompts based on level
-        if self.summarize == "light":
+        if self.summarize == "minimal":
+            prompt = f"""Please provide a minimal summary of the following document. The summary should:
+1. Preserve nearly all key information, concepts, and details
+2. Maintain the exact structure and organization of the original
+3. Include all technical details, examples, and specifications
+4. Be comprehensive enough to answer any detailed questions about the document's content
+5. Preserve all code examples, configuration details, and specific instructions
+6. Only remove redundant phrases and minor formatting - aim to reduce length by about 5-10% while keeping all essential content
+
+Document to summarize:
+{document_content}
+
+Please provide a very detailed summary that retains virtually all essential information needed to answer questions about this document."""
+        
+        elif self.summarize == "light":
             prompt = f"""Please provide a light summary of the following document. The summary should:
 1. Preserve most key information, concepts, and details
 2. Maintain the structure and organization of the original
