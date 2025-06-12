@@ -11,6 +11,7 @@ from rich.table import Table
 from rich.text import Text
 
 from .core import DocumentChecker
+from .models import DocCheckResult
 
 
 @click.command()
