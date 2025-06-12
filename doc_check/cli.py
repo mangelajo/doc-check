@@ -28,7 +28,7 @@ def cli():
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
-@click.option('--summarize', is_flag=True, help='Summarize the document before asking questions (useful for models with smaller context windows)')
+@click.option('--summarize', type=click.Choice(['light', 'medium', 'aggressive']), help='Summarize the document before asking questions. light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 def check(
     config_file: Path,
@@ -38,7 +38,7 @@ def check(
     verbose: bool,
     output: Optional[Path],
     format: str,
-    summarize: bool,
+    summarize: Optional[str],
     summarizer_model: Optional[str]
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
@@ -218,7 +218,7 @@ def validate(config_file: Path) -> None:
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
-@click.option('--summarize', is_flag=True, help='Summarize the document before asking questions (useful for models with smaller context windows)')
+@click.option('--summarize', type=click.Choice(['light', 'medium', 'aggressive']), help='Summarize the document before asking questions. light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 def main(
     config_file: Path,
@@ -228,7 +228,7 @@ def main(
     verbose: bool,
     output: Optional[Path],
     format: str,
-    summarize: bool,
+    summarize: Optional[str],
     summarizer_model: Optional[str]
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.

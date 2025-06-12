@@ -43,14 +43,14 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", provider: Literal["openai", "anthropic"] = "openai", summarize: bool = False, summarizer_model: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4", provider: Literal["openai", "anthropic"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None):
         """Initialize the document checker.
         
         Args:
             api_key: API key for the chosen provider. If None, will try to get from environment.
             model: Model to use for evaluation.
             provider: Which API provider to use ("openai" or "anthropic").
-            summarize: Whether to summarize the document before asking questions.
+            summarize: Level of summarization to apply ('light', 'medium', 'aggressive', or None).
             summarizer_model: Model to use for document summarization.
         """
         self.provider = provider
@@ -380,17 +380,62 @@ EXPLANATION: [Your explanation]"""
         # Detect provider for summarizer model
         summarizer_provider = detect_provider_from_model(self.summarizer_model)
         
-        prompt = f"""Please provide a comprehensive summary of the following document. The summary should:
-1. Capture all key information, concepts, and details
+        # Define summarization prompts based on level
+        if self.summarize == "light":
+            prompt = f"""Please provide a light summary of the following document. The summary should:
+1. Preserve most key information, concepts, and details
 2. Maintain the structure and organization of the original
-3. Include important technical details, examples, and specifications
-4. Be detailed enough to answer questions about the document's content
-5. Preserve any code examples, configuration details, or specific instructions
+3. Include all important technical details, examples, and specifications
+4. Be comprehensive enough to answer detailed questions about the document's content
+5. Preserve all code examples, configuration details, and specific instructions
+6. Aim to reduce length by about 20-30% while keeping essential details
 
 Document to summarize:
 {document_content}
 
-Please provide a thorough summary that retains the essential information needed to answer detailed questions about this document."""
+Please provide a detailed summary that retains nearly all essential information needed to answer questions about this document."""
+        
+        elif self.summarize == "medium":
+            prompt = f"""Please provide a balanced summary of the following document. The summary should:
+1. Capture the most important information, concepts, and key details
+2. Maintain the overall structure but condense sections appropriately
+3. Include critical technical details and key examples
+4. Be detailed enough to answer most questions about the document's content
+5. Preserve essential code examples and important configuration details
+6. Aim to reduce length by about 50% while keeping important information
+
+Document to summarize:
+{document_content}
+
+Please provide a well-balanced summary that retains the important information needed to answer questions about this document."""
+        
+        elif self.summarize == "aggressive":
+            prompt = f"""Please provide a high-level summary of the following document. The summary should:
+1. Focus on the main concepts, key points, and essential information only
+2. Provide a condensed overview of the document's structure and purpose
+3. Include only the most critical technical details and examples
+4. Cover the core topics at a level sufficient for general understanding
+5. Preserve only the most essential code examples or configuration details
+6. Aim to reduce length by about 70-80% while keeping core concepts
+
+Document to summarize:
+{document_content}
+
+Please provide a concise, high-level summary that captures the essential concepts and main points of this document."""
+        
+        else:
+            # Fallback to medium level if somehow an invalid level is passed
+            prompt = f"""Please provide a balanced summary of the following document. The summary should:
+1. Capture the most important information, concepts, and key details
+2. Maintain the overall structure but condense sections appropriately
+3. Include critical technical details and key examples
+4. Be detailed enough to answer most questions about the document's content
+5. Preserve essential code examples and important configuration details
+
+Document to summarize:
+{document_content}
+
+Please provide a well-balanced summary that retains the important information needed to answer questions about this document."""
 
         try:
             if summarizer_provider == "anthropic":
@@ -470,11 +515,12 @@ Please provide a thorough summary that retains the essential information needed 
                     TextColumn("[progress.description]{task.description}"),
                     console=self.console
                 ) as progress:
-                    summarize_task = progress.add_task("Summarizing document...", total=None)
+                    summarize_task = progress.add_task(f"Summarizing document ({self.summarize} level)...", total=None)
                     original_length = len(document_content)
                     document_content = self.summarize_document(document_content)
                     
-                self.console.print(f"[green]Document summarized successfully[/green] (Original: {original_length:,} chars → Summary: {len(document_content):,} chars)")
+                reduction_pct = ((original_length - len(document_content)) / original_length) * 100
+                self.console.print(f"[green]Document summarized successfully ({self.summarize} level)[/green] (Original: {original_length:,} chars → Summary: {len(document_content):,} chars, {reduction_pct:.1f}% reduction)")
             except Exception as e:
                 self.console.print(f"[red]Error: {e}[/red]")
                 raise
@@ -550,5 +596,6 @@ Please provide a thorough summary that retains the essential information needed 
             results=results,
             api_usage=self.api_usage,
             start_time=start_time,
-            end_time=end_time
+            end_time=end_time,
+            summarization_level=self.summarize
         )

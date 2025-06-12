@@ -49,6 +49,7 @@ class DocCheckResult(BaseModel):
     api_usage: Optional[ApiUsage] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    summarization_level: Optional[str] = None
     
     @property
     def success_rate(self) -> float:
