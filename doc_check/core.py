@@ -107,7 +107,7 @@ Please provide a concise, high-level summary that captures the essential concept
 }
 
 # Default models
-DEFAULT_OPENAI_MODEL = "gpt-4"
+DEFAULT_OPENAI_MODEL = "gpt-4.1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-20250514"
 
@@ -416,7 +416,7 @@ class DocumentChecker:
     
     def _calculate_openai_cost(self, usage) -> float:
         """Calculate estimated cost for OpenAI API usage."""
-        # Default to gpt-4 pricing if model not found
+        # Default to gpt-4.1 pricing if model not found
         model_pricing = OPENAI_PRICING.get(self.model, OPENAI_PRICING[DEFAULT_OPENAI_MODEL])
         
         input_cost = (usage.prompt_tokens / 1000) * model_pricing["input"]

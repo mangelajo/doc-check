@@ -14,7 +14,7 @@ from .core import DocumentChecker, detect_provider_from_model
 from .models import DocCheckResult
 
 # Default models
-DEFAULT_OPENAI_MODEL = "gpt-4"
+DEFAULT_OPENAI_MODEL = "gpt-4.1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-20250514"
 
@@ -28,7 +28,7 @@ def cli():
 @cli.command()
 @click.argument('config_file', type=click.Path(exists=True, path_type=Path))
 @click.option('--api-key', help='API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
-@click.option('--model', help='Model to use. OpenAI: gpt-4, gpt-4-turbo, gpt-3.5-turbo. Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-sonnet-20240229, claude-3-haiku-20240307. Default: gpt-4 for OpenAI, claude-sonnet-4-20250514 for Anthropic')
+@click.option('--model', help='Model to use. OpenAI: gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini, gpt-4.5-preview. Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-sonnet-20240229, claude-3-haiku-20240307. Default: gpt-4.1 for OpenAI, claude-sonnet-4-20250514 for Anthropic')
 @click.option('--provider', type=click.Choice(['openai', 'anthropic']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
@@ -218,7 +218,7 @@ def validate(config_file: Path) -> None:
 @click.command()
 @click.argument('config_file', type=click.Path(exists=True, path_type=Path))
 @click.option('--api-key', help='API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
-@click.option('--model', help='Model to use. OpenAI: gpt-4, gpt-4-turbo, gpt-3.5-turbo. Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-sonnet-20240229, claude-3-haiku-20240307. Default: gpt-4 for OpenAI, claude-sonnet-4-20250514 for Anthropic')
+@click.option('--model', help='Model to use. OpenAI: gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini, gpt-4.5-preview. Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-sonnet-20240229, claude-3-haiku-20240307. Default: gpt-4.1 for OpenAI, claude-sonnet-4-20250514 for Anthropic')
 @click.option('--provider', type=click.Choice(['openai', 'anthropic']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
