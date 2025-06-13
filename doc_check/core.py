@@ -275,6 +275,18 @@ class DocumentChecker:
         
         content = document_content
         
+        # Remove HTML comments
+        content = re.sub(r'<!--.*?-->', '', content, flags=re.DOTALL)
+        
+        # Remove script and style tags completely (including content)
+        content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<style[^>]*>.*?</style>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove meta tags, link tags, and other head elements
+        content = re.sub(r'<meta[^>]*/?>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<link[^>]*/?>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<title[^>]*>.*?</title>', '', content, flags=re.IGNORECASE | re.DOTALL)
+        
         # Convert common HTML elements to markdown
         # Headers
         content = re.sub(r'<h1[^>]*>(.*?)</h1>', r'# \1', content, flags=re.IGNORECASE | re.DOTALL)
@@ -290,12 +302,26 @@ class DocumentChecker:
         content = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'<i[^>]*>(.*?)</i>', r'*\1*', content, flags=re.IGNORECASE | re.DOTALL)
         
-        # Code
+        # Code blocks and inline code
         content = re.sub(r'<code[^>]*>(.*?)</code>', r'`\1`', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<pre[^>]*><code[^>]*>(.*?)</code></pre>', r'```\n\1\n```', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'<pre[^>]*>(.*?)</pre>', r'```\n\1\n```', content, flags=re.IGNORECASE | re.DOTALL)
         
         # Links
         content = re.sub(r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>(.*?)</a>', r'[\2](\1)', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Images
+        content = re.sub(r'<img[^>]*alt=["\']([^"\']*)["\'][^>]*src=["\']([^"\']*)["\'][^>]*/?>', r'![\1](\2)', content, flags=re.IGNORECASE)
+        content = re.sub(r'<img[^>]*src=["\']([^"\']*)["\'][^>]*alt=["\']([^"\']*)["\'][^>]*/?>', r'![\2](\1)', content, flags=re.IGNORECASE)
+        content = re.sub(r'<img[^>]*src=["\']([^"\']*)["\'][^>]*/?>', r'![](\1)', content, flags=re.IGNORECASE)
+        
+        # Tables (basic conversion)
+        content = re.sub(r'<table[^>]*>', '\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'</table>', '\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<tr[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</tr>', '\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<th[^>]*>(.*?)</th>', r'| \1 ', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<td[^>]*>(.*?)</td>', r'| \1 ', content, flags=re.IGNORECASE | re.DOTALL)
         
         # Lists
         content = re.sub(r'<ul[^>]*>', '', content, flags=re.IGNORECASE)
@@ -309,20 +335,39 @@ class DocumentChecker:
         content = re.sub(r'</p>', '\n\n', content, flags=re.IGNORECASE)
         content = re.sub(r'<br[^>]*/?>', '\n', content, flags=re.IGNORECASE)
         
-        # Remove other common HTML tags but preserve content
-        content = re.sub(r'<div[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'</div>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'<span[^>]*>', '', content, flags=re.IGNORECASE)
-        content = re.sub(r'</span>', '', content, flags=re.IGNORECASE)
+        # Remove all remaining HTML tags (aggressive cleanup)
+        content = re.sub(r'<[^>]+>', '', content)
+        
+        # Decode HTML entities
+        import html
+        content = html.unescape(content)
         
         # Clean up excessive whitespace and empty lines
-        content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple empty lines to double
+        content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)  # Multiple empty lines to double
         content = re.sub(r'[ \t]+\n', '\n', content)  # Trailing whitespace
         content = re.sub(r'\n[ \t]+', '\n', content)  # Leading whitespace on lines
+        content = re.sub(r'[ \t]+', ' ', content)  # Multiple spaces/tabs to single space
         
         # Clean up markdown formatting issues
         content = re.sub(r'#{7,}', '######', content)  # Too many header levels
         content = re.sub(r'\*{3,}', '**', content)  # Too many asterisks for bold
+        content = re.sub(r'_{3,}', '__', content)  # Too many underscores
+        
+        # Remove excessive punctuation
+        content = re.sub(r'\.{4,}', '...', content)  # Multiple dots to ellipsis
+        content = re.sub(r'!{2,}', '!', content)  # Multiple exclamation marks
+        content = re.sub(r'\?{2,}', '?', content)  # Multiple question marks
+        
+        # Clean up table formatting
+        content = re.sub(r'\|\s*\|', '|', content)  # Empty table cells
+        content = re.sub(r'\|\s*\n', '|\n', content)  # Trailing spaces in table rows
+        
+        # Remove standalone punctuation lines
+        content = re.sub(r'\n[-=_*]{1,3}\n', '\n', content)
+        
+        # Clean up list formatting
+        content = re.sub(r'\n-\s*\n', '\n', content)  # Empty list items
+        content = re.sub(r'^-\s*$', '', content, flags=re.MULTILINE)  # Empty list items at line start
         
         return content.strip()
     
