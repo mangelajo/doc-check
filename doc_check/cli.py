@@ -191,16 +191,34 @@ def check(
                 save_results(result, output, actual_format)
                 console.print(f"[green]Results saved to {output}[/green]")
         
-        # Save additional output format if requested
+        # Save additional output format if requested (but avoid duplicates)
         if output_format:
-            try:
-                from .output import get_formatter
-                formatter_class = get_formatter(output_format)
-                formatter = formatter_class(output_dir)
-                output_path = formatter.write_results(result)
-                console.print(f"[green]{output_format.upper()} results saved to {output_path}[/green]")
-            except Exception as e:
-                console.print(f"[red]Error saving {output_format.upper()} output: {e}[/red]")
+            # Skip if we already generated this format via --output
+            skip_duplicate = False
+            if output:
+                actual_format = format
+                if format == 'auto':
+                    suffix = output.suffix.lower()
+                    if suffix == '.html':
+                        actual_format = 'html'
+                    elif suffix in ['.yaml', '.yml']:
+                        actual_format = 'yaml'
+                    else:
+                        actual_format = 'json'
+                
+                if actual_format == output_format:
+                    skip_duplicate = True
+                    console.print(f"[dim]Skipping duplicate {output_format.upper()} output (already generated via --output)[/dim]")
+            
+            if not skip_duplicate:
+                try:
+                    from .output import get_formatter
+                    formatter_class = get_formatter(output_format)
+                    formatter = formatter_class(output_dir)
+                    output_path = formatter.write_results(result)
+                    console.print(f"[green]{output_format.upper()} results saved to {output_path}[/green]")
+                except Exception as e:
+                    console.print(f"[red]Error saving {output_format.upper()} output: {e}[/red]")
         
         # Print final summary
         console.print("\n" + "="*50)
