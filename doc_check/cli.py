@@ -31,6 +31,7 @@ def cli():
 @click.option('--model', help='Model to use. OpenAI: gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini, gpt-4.5-preview. Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-sonnet-20240229, claude-3-haiku-20240307. Default: gpt-4.1 for OpenAI, claude-sonnet-4-20250514 for Anthropic')
 @click.option('--provider', type=click.Choice(['openai', 'anthropic']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.option('--verbose-dialog', is_flag=True, help='Show questions and answers in real-time as they are processed')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
@@ -44,7 +45,8 @@ def check(
     output: Optional[Path],
     format: str,
     summarize: Optional[str],
-    summarizer_model: Optional[str]
+    summarizer_model: Optional[str],
+    verbose_dialog: bool
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -75,7 +77,8 @@ def check(
             model=model, 
             provider=provider,
             summarize=summarize,
-            summarizer_model=summarizer_model
+            summarizer_model=summarizer_model,
+            verbose_dialog=verbose_dialog
         )
         
         # Run the check
@@ -221,6 +224,7 @@ def validate(config_file: Path) -> None:
 @click.option('--model', help='Model to use. OpenAI: gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o, gpt-4o-mini, gpt-4.5-preview. Anthropic: claude-sonnet-4-20250514, claude-3-5-sonnet-20241022, claude-3-sonnet-20240229, claude-3-haiku-20240307. Default: gpt-4.1 for OpenAI, claude-sonnet-4-20250514 for Anthropic')
 @click.option('--provider', type=click.Choice(['openai', 'anthropic']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
+@click.option('--verbose-dialog', is_flag=True, help='Show questions and answers in real-time as they are processed')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
@@ -234,7 +238,8 @@ def main(
     output: Optional[Path],
     format: str,
     summarize: Optional[str],
-    summarizer_model: Optional[str]
+    summarizer_model: Optional[str],
+    verbose_dialog: bool
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -254,7 +259,7 @@ def main(
             provider = detected_provider
             console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
     
-    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model)
+    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog)
 
 
 if __name__ == '__main__':

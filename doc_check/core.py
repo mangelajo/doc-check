@@ -104,7 +104,7 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False):
         """Initialize the document checker.
         
         Args:
@@ -113,11 +113,13 @@ class DocumentChecker:
             provider: Which API provider to use ("openai" or "anthropic").
             summarize: Level of summarization to apply ('light', 'medium', 'aggressive', or None).
             summarizer_model: Model to use for document summarization.
+            verbose_dialog: Whether to show questions and answers in real-time.
         """
         self.provider = provider
         self.model = model
         self.summarize = summarize
         self.summarizer_model = summarizer_model or DEFAULT_SUMMARIZER_MODEL
+        self.verbose_dialog = verbose_dialog
         self.console = Console()
         
         # Initialize the main provider
@@ -338,7 +340,14 @@ class DocumentChecker:
                 try:
                     # Ask the question
                     self.console.print(f"[blue]Asking:[/blue] {question_config.name}")
+                    
+                    if self.verbose_dialog:
+                        self.console.print(f"[dim]Question:[/dim] {question_config.question}")
+                    
                     answer = self.ask_question(document_content, question_config.question)
+                    
+                    if self.verbose_dialog:
+                        self.console.print(f"[dim]Answer:[/dim] {answer}")
                     
                     # Evaluate the answer
                     self.console.print(f"[yellow]Evaluating:[/yellow] {question_config.name}")
@@ -347,6 +356,9 @@ class DocumentChecker:
                         answer,
                         question_config.answerEvaluation
                     )
+                    
+                    if self.verbose_dialog:
+                        self.console.print(f"[dim]Evaluation:[/dim] {evaluation_result}")
                     
                     result = QuestionResult(
                         name=question_config.name,
