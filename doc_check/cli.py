@@ -72,7 +72,59 @@ def check(
     console = Console()
     
     try:
-        # Set default model if not specified
+        # Load configuration first to get defaults from config file
+        temp_checker = DocumentChecker()
+        config = temp_checker.load_config(config_file)
+        
+        # Use config file values as defaults if command-line options weren't specified
+        # Provider: use config value if CLI is default and config specifies one
+        if provider == "openai" and config.provider:  # CLI default is "openai"
+            provider = config.provider
+            console.print(f"[dim]Using provider '{provider}' from config file[/dim]")
+        
+        # Model: use config value if CLI didn't specify one
+        if model is None and config.model:
+            model = config.model
+            console.print(f"[dim]Using model '{model}' from config file[/dim]")
+        
+        # API key: use config value if CLI didn't specify one
+        if api_key is None and config.api_key:
+            api_key = config.api_key
+        
+        # Summarize: use config value if CLI didn't specify one
+        if summarize is None and config.summarize:
+            summarize = config.summarize
+            console.print(f"[dim]Using summarize '{summarize}' from config file[/dim]")
+        
+        # Summarizer model: use config value if CLI didn't specify one
+        if summarizer_model is None and config.summarizer_model:
+            summarizer_model = config.summarizer_model
+        
+        # RAG settings: use config values if CLI used defaults
+        if not use_rag and config.use_rag:
+            use_rag = config.use_rag
+            console.print(f"[dim]Using RAG settings from config file[/dim]")
+        
+        if rag_chunk_size == 512 and config.rag_chunk_size:  # 512 is CLI default
+            rag_chunk_size = config.rag_chunk_size
+        
+        if rag_chunk_overlap == 50 and config.rag_chunk_overlap:  # 50 is CLI default
+            rag_chunk_overlap = config.rag_chunk_overlap
+        
+        if rag_top_k == 5 and config.rag_top_k:  # 5 is CLI default
+            rag_top_k = config.rag_top_k
+        
+        if not rag_fallback and config.rag_fallback:
+            rag_fallback = config.rag_fallback
+        
+        # Output settings: use config values if CLI didn't specify
+        if output_format is None and config.output_format:
+            output_format = config.output_format
+        
+        if output_dir is None and config.output_dir:
+            output_dir = Path(config.output_dir)
+        
+        # Set default model if still not specified
         if model is None:
             if provider == "anthropic":
                 model = DEFAULT_ANTHROPIC_MODEL
@@ -248,25 +300,7 @@ def main(
     
     CONFIG_FILE: Path to the doc-check.yaml configuration file.
     """
-    # Apply the same auto-detection logic for the main function
-    console = Console()
-    
-    # Set default model if not specified
-    if model is None:
-        if provider == "anthropic":
-            model = DEFAULT_ANTHROPIC_MODEL
-        elif provider == "ollama":
-            model = DEFAULT_OLLAMA_MODEL
-        else:
-            model = DEFAULT_OPENAI_MODEL
-    
-    # Auto-detect provider from model if not explicitly set to non-default
-    if provider == "openai":  # This is the default value
-        detected_provider = detect_provider_from_model(model)
-        if detected_provider != "openai":
-            provider = detected_provider
-            console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
-    
+    # The main function now just delegates to check() which handles config loading
     return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, debug, output_format, output_dir, use_rag, rag_chunk_size, rag_chunk_overlap, rag_top_k, rag_fallback)
 
 

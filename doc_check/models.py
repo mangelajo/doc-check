@@ -16,6 +16,26 @@ class DocCheckConfig(BaseModel):
     """Configuration for document checking."""
     file: str
     questions: List[Question]
+    
+    # Optional provider and model settings
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    api_key: Optional[str] = None
+    
+    # Optional summarization settings
+    summarize: Optional[str] = None
+    summarizer_model: Optional[str] = None
+    
+    # Optional RAG settings
+    use_rag: Optional[bool] = None
+    rag_chunk_size: Optional[int] = None
+    rag_chunk_overlap: Optional[int] = None
+    rag_top_k: Optional[int] = None
+    rag_fallback: Optional[bool] = None
+    
+    # Optional output settings
+    output_format: Optional[str] = None
+    output_dir: Optional[str] = None
 
 
 class QuestionResult(BaseModel):
