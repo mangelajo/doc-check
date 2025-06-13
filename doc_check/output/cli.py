@@ -141,3 +141,17 @@ Estimated Cost: ${usage.estimated_cost:.4f}"""
             border_style="magenta",
             padding=(1, 2)
         ))
+    
+    def display_debug_raw_response(self, raw_response: str, response_type: str) -> None:
+        """Display debug information about the raw model response."""
+        # Truncate very long responses for display
+        display_response = raw_response
+        if len(raw_response) > 20000:
+            display_response = raw_response[:20000] + "\n\n... [truncated for display]"
+        
+        self.console.print(Panel(
+            display_response,
+            title=f"🤖 Debug: Raw {response_type}",
+            border_style="bright_blue",
+            padding=(1, 2)
+        ))

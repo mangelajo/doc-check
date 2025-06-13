@@ -256,7 +256,15 @@ class DocumentChecker:
             formatter = CLIFormatter(console=self.console)
             formatter.display_debug_prompt(question, content_to_use, "question")
         
-        return self.main_provider.ask(content_to_use, question)
+        answer = self.main_provider.ask(content_to_use, question)
+        
+        # Show raw response in debug mode
+        if self.debug and hasattr(self.main_provider, 'last_raw_response'):
+            from .output.cli import CLIFormatter
+            formatter = CLIFormatter(console=self.console)
+            formatter.display_debug_raw_response(self.main_provider.last_raw_response, "Question Response")
+        
+        return answer
     
     
     def evaluate_answer(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
@@ -267,7 +275,15 @@ class DocumentChecker:
             formatter = CLIFormatter(console=self.console)
             formatter.display_debug_evaluation(question, answer, evaluation_criteria)
         
-        return self.main_provider.evaluate(question, answer, evaluation_criteria)
+        result = self.main_provider.evaluate(question, answer, evaluation_criteria)
+        
+        # Show raw response in debug mode
+        if self.debug and hasattr(self.main_provider, 'last_raw_response'):
+            from .output.cli import CLIFormatter
+            formatter = CLIFormatter(console=self.console)
+            formatter.display_debug_raw_response(self.main_provider.last_raw_response, "Evaluation Response")
+        
+        return result
     
     
     

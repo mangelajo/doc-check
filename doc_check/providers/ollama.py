@@ -60,6 +60,10 @@ class OllamaProvider:
         )
         
         response = self._make_request(prompt, QUESTION_ANSWERING_SYSTEM_PROMPT)
+        
+        # Store raw response for debug mode
+        self.last_raw_response = response
+        
         return response
     
     def evaluate(self, question: str, answer: str, evaluation_criteria: str) -> Tuple[bool, str]:
@@ -71,6 +75,10 @@ class OllamaProvider:
         )
         
         evaluation_text = self._make_request(prompt, EVALUATION_SYSTEM_PROMPT)
+        
+        # Store raw response for debug mode
+        self.last_raw_response = evaluation_text
+        
         return self._parse_evaluation_result(evaluation_text)
     
     def summarize(self, document_content: str) -> str:

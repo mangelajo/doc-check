@@ -91,6 +91,9 @@ class AnthropicProvider:
                 self.api_usage.api_calls += 1
                 self.api_usage.estimated_cost += self._calculate_cost(response.usage)
             
+            # Store raw response for debug mode
+            self.last_raw_response = response.content[0].text
+            
             return response.content[0].text
         except Exception as e:
             raise RuntimeError(f"Failed to get answer from Anthropic: {e}")
@@ -123,6 +126,10 @@ class AnthropicProvider:
                 self.api_usage.estimated_cost += self._calculate_cost(response.usage)
             
             evaluation_text = response.content[0].text
+            
+            # Store raw response for debug mode
+            self.last_raw_response = evaluation_text
+            
             return self._parse_evaluation_result(evaluation_text)
             
         except Exception as e:
