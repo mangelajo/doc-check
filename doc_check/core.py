@@ -11,6 +11,7 @@ from datetime import datetime
 
 import yaml
 from rich.console import Console
+from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
@@ -342,12 +343,22 @@ class DocumentChecker:
                     self.console.print(f"[blue]Asking:[/blue] {question_config.name}")
                     
                     if self.verbose_dialog:
-                        self.console.print(f"[dim]Question:[/dim] {question_config.question}")
+                        self.console.print(Panel(
+                            question_config.question,
+                            title="Question",
+                            border_style="blue",
+                            padding=(1, 2)
+                        ))
                     
                     answer = self.ask_question(document_content, question_config.question)
                     
                     if self.verbose_dialog:
-                        self.console.print(f"[dim]Answer:[/dim] {answer}")
+                        self.console.print(Panel(
+                            answer,
+                            title="Answer",
+                            border_style="green",
+                            padding=(1, 2)
+                        ))
                     
                     # Evaluate the answer
                     self.console.print(f"[yellow]Evaluating:[/yellow] {question_config.name}")
@@ -358,7 +369,12 @@ class DocumentChecker:
                     )
                     
                     if self.verbose_dialog:
-                        self.console.print(f"[dim]Evaluation:[/dim] {evaluation_result}")
+                        self.console.print(Panel(
+                            evaluation_result,
+                            title="Evaluation",
+                            border_style="yellow",
+                            padding=(1, 2)
+                        ))
                     
                     result = QuestionResult(
                         name=question_config.name,
