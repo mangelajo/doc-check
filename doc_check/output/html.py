@@ -54,6 +54,7 @@ class HTMLFormatter(OutputFormatter):
         for i, question_result in enumerate(result.results, 1):
             status = "PASS" if question_result.passed else "FAIL"
             status_class_row = "pass" if question_result.passed else "fail"
+            status_icon = "✓" if question_result.passed else "✗"
             
             if question_result.error:
                 evaluation_summary = f"Error: {self._escape_html(question_result.error)}"
@@ -68,7 +69,10 @@ class HTMLFormatter(OutputFormatter):
                 <tr class="{status_class_row}">
                     <td>{i}</td>
                     <td><a href="#question-{i}" class="question-link">{self._escape_html(question_result.name)}</a></td>
-                    <td class="status {status_class_row}">{status}</td>
+                    <td class="status {status_class_row}">
+                        <span class="icon {status_class_row}-icon">{status_icon}</span>
+                        {status}
+                    </td>
                     <td class="evaluation-summary">{evaluation_summary}</td>
                 </tr>
             """)
@@ -78,7 +82,10 @@ class HTMLFormatter(OutputFormatter):
                 <div class="question-detail {status_class_row}" id="question-{i}">
                     <div class="question-header">
                         <h3>Question {i}: {self._escape_html(question_result.name)}</h3>
-                        <div class="status-badge {status_class_row}">{status}</div>
+                        <div class="status-badge {status_class_row}">
+                            <span class="icon {status_class_row}-icon">{status_icon}</span>
+                            {status}
+                        </div>
                     </div>
                     <div class="question-content">
                         <div class="question-block">
@@ -181,7 +188,9 @@ class HTMLFormatter(OutputFormatter):
             font-weight: 300;
         }}
         .status-badge {{
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: bold;
@@ -222,12 +231,55 @@ class HTMLFormatter(OutputFormatter):
             border-left: 4px solid #667eea;
         }}
         .stat .label {{
-            font-weight: 600;
-            color: #555;
+            font-weight: 700;
+            color: #333;
         }}
         .stat .value {{
             color: #333;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        .icon {{
+            font-weight: bold;
+            font-size: 1.1em;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }}
+        .pass-icon {{
+            background-color: #4CAF50;
+        }}
+        .fail-icon {{
+            background-color: #f44336;
+        }}
+        .progress-bar {{
+            position: relative;
+            width: 100px;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        .progress-fill {{
+            height: 100%;
+            background: linear-gradient(90deg, #f44336 0%, #ff9800 50%, #4CAF50 100%);
+            transition: width 0.3s ease;
+        }}
+        .progress-text {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #333;
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
         }}
         .results-table {{
             width: 100%;
@@ -258,6 +310,10 @@ class HTMLFormatter(OutputFormatter):
             padding: 4px 8px;
             border-radius: 4px;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }}
         .status.pass {{
             background-color: #4CAF50;
@@ -372,15 +428,24 @@ class HTMLFormatter(OutputFormatter):
                 </div>
                 <div class="stat">
                     <span class="label">Passed:</span>
-                    <span class="value">{result.passed_questions}</span>
+                    <span class="value">
+                        <span class="icon pass-icon">✓</span> {result.passed_questions}
+                    </span>
                 </div>
                 <div class="stat">
                     <span class="label">Failed:</span>
-                    <span class="value">{result.failed_questions}</span>
+                    <span class="value">
+                        <span class="icon fail-icon">✗</span> {result.failed_questions}
+                    </span>
                 </div>
                 <div class="stat">
                     <span class="label">Success Rate:</span>
-                    <span class="value">{result.success_rate:.1f}%</span>
+                    <span class="value">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {result.success_rate}%"></div>
+                            <span class="progress-text">{result.success_rate:.1f}%</span>
+                        </div>
+                    </span>
                 </div>
                 <div class="stat">
                     <span class="label">Duration:</span>
