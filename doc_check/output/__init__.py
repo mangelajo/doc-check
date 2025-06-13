@@ -3,13 +3,15 @@
 from .base import OutputFormatter
 from .html import HTMLFormatter
 from .junit import JUnitFormatter
+from .cli import CLIFormatter
 
-__all__ = ['OutputFormatter', 'HTMLFormatter', 'JUnitFormatter']
+__all__ = ['OutputFormatter', 'HTMLFormatter', 'JUnitFormatter', 'CLIFormatter']
 
 # Registry of available formatters
 FORMATTERS = {
     'html': HTMLFormatter,
     'junit': JUnitFormatter,
+    'cli': CLIFormatter,
 }
 
 def get_formatter(format_name: str) -> type[OutputFormatter]:
