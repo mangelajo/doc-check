@@ -36,6 +36,8 @@ def cli():
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
+@click.option('--output-format', type=click.Choice(['html', 'junit']), help='Additional output format (html or junit)')
+@click.option('--output-dir', type=click.Path(path_type=Path), help='Directory for additional output files (default: current directory)')
 def check(
     config_file: Path,
     api_key: Optional[str],
@@ -46,7 +48,9 @@ def check(
     format: str,
     summarize: Optional[str],
     summarizer_model: Optional[str],
-    verbose_dialog: bool
+    verbose_dialog: bool,
+    output_format: Optional[str],
+    output_dir: Optional[Path]
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -92,6 +96,14 @@ def check(
         if output:
             save_results(result, output, format)
             console.print(f"[green]Results saved to {output}[/green]")
+        
+        # Save additional output format if requested
+        if output_format:
+            from .output import get_formatter
+            formatter_class = get_formatter(output_format)
+            formatter = formatter_class(output_dir)
+            output_path = formatter.write_results(result)
+            console.print(f"[green]{output_format.upper()} results saved to {output_path}[/green]")
         
         # Print final summary
         console.print("\n" + "="*50)
@@ -229,6 +241,8 @@ def validate(config_file: Path) -> None:
 @click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
+@click.option('--output-format', type=click.Choice(['html', 'junit']), help='Additional output format (html or junit)')
+@click.option('--output-dir', type=click.Path(path_type=Path), help='Directory for additional output files (default: current directory)')
 def main(
     config_file: Path,
     api_key: Optional[str],
@@ -239,7 +253,9 @@ def main(
     format: str,
     summarize: Optional[str],
     summarizer_model: Optional[str],
-    verbose_dialog: bool
+    verbose_dialog: bool,
+    output_format: Optional[str],
+    output_dir: Optional[Path]
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -259,7 +275,7 @@ def main(
             provider = detected_provider
             console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
     
-    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog)
+    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, output_format, output_dir)
 
 
 if __name__ == '__main__':
