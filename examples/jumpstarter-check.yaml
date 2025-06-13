@@ -1,20 +1,40 @@
 file: output2.md
+
+# Model and provider settings
+provider: anthropic
+model: claude-sonnet-4-20250514
+# api_key: your-api-key-here  # Better to use environment variable
+
+summarize: cleanup
+
+# RAG settings for large documents
+use_rag: true
+rag_top_k: 8 
+rag_fallback: true
+
 questions:
    - name: installation options
      question: |
       What are the install options for jumpstarter?
       Focus on the python framework and service, not the drivers.
-      provide install examples for the cli/python framework, and the service install options.
+      provide install examples for the cli/python framework and the distributed service.
+ 
      answerEvaluation: |
        The answer should contain details on installing jumpstarter with pip locally,
-       but also explain that the distributed service can be installed with helm or
-       argoCD into a cluster.
+       but also explain that the distributed service runs in kubernetes.
+
+   - name: kubernetes install options
+     question: |
+       What options are available when installing the service in kubernetes or openshift? can it be installed using gitops?
+     answerEvaluation:
+       It should provide helm and argocd options.
+
 
    - name: installing with pip from main
      question: How can I install the latest version of the python framework from main?
      answerEvaluation: |
        At least two methods should be offered, one is installing from git and using uv or make, the
-       other option should include using pip3 install --extra-index-url https://pkg.jumpstarter.dev/main/simple jumpstarter-all
+       other option should include using pip3 install --extra-index-url https://pkg.jumpstarter.dev/main/ jumpstarter-all
 
    - name: serial connection
      question: |
