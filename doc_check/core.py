@@ -15,7 +15,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
-from .providers import OpenAIProvider, AnthropicProvider
+from .providers import OpenAIProvider, AnthropicProvider, OllamaProvider
 
 # Summarization prompt templates
 SUMMARIZATION_PROMPTS = {
@@ -75,6 +75,7 @@ Please provide a concise, high-level summary that captures the essential concept
 # Default models
 DEFAULT_OPENAI_MODEL = "gpt-4.1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_OLLAMA_MODEL = "llama3.2"
 DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-20250514"
 
 
@@ -86,7 +87,7 @@ def detect_provider_from_model(model: str) -> str:
         model: The model name to check
         
     Returns:
-        The detected provider ('openai' or 'anthropic')
+        The detected provider ('openai', 'anthropic', or 'ollama')
     """
     model_lower = model.lower()
     
@@ -98,6 +99,14 @@ def detect_provider_from_model(model: str) -> str:
     if any(pattern in model_lower for pattern in ['gpt', 'davinci', 'curie', 'babbage', 'ada']):
         return 'openai'
     
+    # Ollama models (common local models)
+    if any(pattern in model_lower for pattern in [
+        'llama', 'mistral', 'mixtral', 'codellama', 'phi3', 'gemma', 
+        'qwen', 'deepseek', 'neural-chat', 'starling', 'vicuna', 
+        'orca-mini', 'wizard-vicuna', 'nous-hermes'
+    ]):
+        return 'ollama'
+    
     # Default to openai for unknown models
     return 'openai'
 
@@ -105,13 +114,13 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False):
         """Initialize the document checker.
         
         Args:
             api_key: API key for the chosen provider. If None, will try to get from environment.
             model: Model to use for evaluation.
-            provider: Which API provider to use ("openai" or "anthropic").
+            provider: Which API provider to use ("openai", "anthropic", or "ollama").
             summarize: Level of summarization to apply ('light', 'medium', 'aggressive', or None).
             summarizer_model: Model to use for document summarization.
             verbose_dialog: Whether to show questions and answers in real-time.
@@ -129,6 +138,11 @@ class DocumentChecker:
             if model == DEFAULT_OPENAI_MODEL:
                 self.model = DEFAULT_ANTHROPIC_MODEL
             self.main_provider = AnthropicProvider(api_key=api_key, model=self.model)
+        elif provider == "ollama":
+            # Set default Ollama model if using default OpenAI model
+            if model == DEFAULT_OPENAI_MODEL:
+                self.model = DEFAULT_OLLAMA_MODEL
+            self.main_provider = OllamaProvider(model=self.model)
         else:
             self.main_provider = OpenAIProvider(api_key=api_key, model=self.model)
         
@@ -136,6 +150,8 @@ class DocumentChecker:
         summarizer_provider_type = detect_provider_from_model(self.summarizer_model)
         if summarizer_provider_type == "anthropic":
             self.summarizer_provider = AnthropicProvider(api_key=api_key, model=self.summarizer_model)
+        elif summarizer_provider_type == "ollama":
+            self.summarizer_provider = OllamaProvider(model=self.summarizer_model)
         else:
             self.summarizer_provider = OpenAIProvider(api_key=api_key, model=self.summarizer_model)
         

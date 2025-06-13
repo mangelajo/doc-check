@@ -74,3 +74,26 @@ ANTHROPIC_PRICING = {
     "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
     "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
 }
+
+# Ollama pricing (free for local usage)
+OLLAMA_PRICING = {
+    # Ollama models are free to use locally
+    # Common models that might be used
+    "llama3.2": {"input": 0.0, "output": 0.0},
+    "llama3.1": {"input": 0.0, "output": 0.0},
+    "llama3": {"input": 0.0, "output": 0.0},
+    "llama2": {"input": 0.0, "output": 0.0},
+    "mistral": {"input": 0.0, "output": 0.0},
+    "mixtral": {"input": 0.0, "output": 0.0},
+    "codellama": {"input": 0.0, "output": 0.0},
+    "phi3": {"input": 0.0, "output": 0.0},
+    "gemma": {"input": 0.0, "output": 0.0},
+    "qwen": {"input": 0.0, "output": 0.0},
+    "deepseek-coder": {"input": 0.0, "output": 0.0},
+    "neural-chat": {"input": 0.0, "output": 0.0},
+    "starling-lm": {"input": 0.0, "output": 0.0},
+    "vicuna": {"input": 0.0, "output": 0.0},
+    "orca-mini": {"input": 0.0, "output": 0.0},
+    "wizard-vicuna": {"input": 0.0, "output": 0.0},
+    "nous-hermes": {"input": 0.0, "output": 0.0},
+}
