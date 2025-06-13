@@ -340,15 +340,15 @@ class DocumentChecker:
                 
                 try:
                     # Ask the question
-                    self.console.print(f"[blue]Asking:[/blue] {question_config.name}")
-                    
                     if self.verbose_dialog:
                         self.console.print(Panel(
                             question_config.question,
-                            title="Question",
+                            title=f"Asking: {question_config.name}",
                             border_style="blue",
                             padding=(1, 2)
                         ))
+                    else:
+                        self.console.print(f"[blue]Asking:[/blue] {question_config.name}")
                     
                     answer = self.ask_question(document_content, question_config.question)
                     
@@ -361,7 +361,6 @@ class DocumentChecker:
                         ))
                     
                     # Evaluate the answer
-                    self.console.print(f"[yellow]Evaluating:[/yellow] {question_config.name}")
                     passed, evaluation_result = self.evaluate_answer(
                         question_config.question,
                         answer,
@@ -371,10 +370,12 @@ class DocumentChecker:
                     if self.verbose_dialog:
                         self.console.print(Panel(
                             evaluation_result,
-                            title="Evaluation",
+                            title=f"Evaluating: {question_config.name}",
                             border_style="yellow",
                             padding=(1, 2)
                         ))
+                    else:
+                        self.console.print(f"[yellow]Evaluating:[/yellow] {question_config.name}")
                     
                     result = QuestionResult(
                         name=question_config.name,
