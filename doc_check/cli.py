@@ -193,11 +193,14 @@ def check(
         
         # Save additional output format if requested
         if output_format:
-            from .output import get_formatter
-            formatter_class = get_formatter(output_format)
-            formatter = formatter_class(output_dir)
-            output_path = formatter.write_results(result)
-            console.print(f"[green]{output_format.upper()} results saved to {output_path}[/green]")
+            try:
+                from .output import get_formatter
+                formatter_class = get_formatter(output_format)
+                formatter = formatter_class(output_dir)
+                output_path = formatter.write_results(result)
+                console.print(f"[green]{output_format.upper()} results saved to {output_path}[/green]")
+            except Exception as e:
+                console.print(f"[red]Error saving {output_format.upper()} output: {e}[/red]")
         
         # Print final summary
         console.print("\n" + "="*50)

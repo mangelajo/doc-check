@@ -31,12 +31,16 @@ class HTMLFormatter(OutputFormatter):
         
         output_path = self.output_dir / filename
         
-        html_content = self._generate_html(result)
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(html_content)
-        
-        return output_path
+        try:
+            html_content = self._generate_html(result)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            return output_path
+        except Exception as e:
+            # If HTML generation fails, provide more specific error info
+            raise RuntimeError(f"Failed to generate HTML content: {e}") from e
     
     def _generate_html(self, result: DocCheckResult) -> str:
         """Generate HTML content for the results."""
@@ -44,10 +48,21 @@ class HTMLFormatter(OutputFormatter):
         overall_status = "PASS" if result.failed_questions == 0 else "FAIL"
         status_class = "pass" if overall_status == "PASS" else "fail"
         
-        # Format timestamps
-        start_time_str = result.start_time.strftime("%Y-%m-%d %H:%M:%S") if result.start_time else "N/A"
-        end_time_str = result.end_time.strftime("%Y-%m-%d %H:%M:%S") if result.end_time else "N/A"
-        duration_str = f"{result.duration_seconds:.1f}s" if result.duration_seconds else "N/A"
+        # Format timestamps safely
+        try:
+            start_time_str = result.start_time.strftime("%Y-%m-%d %H:%M:%S") if result.start_time else "N/A"
+        except (AttributeError, TypeError):
+            start_time_str = str(result.start_time) if result.start_time else "N/A"
+        
+        try:
+            end_time_str = result.end_time.strftime("%Y-%m-%d %H:%M:%S") if result.end_time else "N/A"
+        except (AttributeError, TypeError):
+            end_time_str = str(result.end_time) if result.end_time else "N/A"
+        
+        try:
+            duration_str = f"{result.duration_seconds:.1f}s" if result.duration_seconds else "N/A"
+        except (AttributeError, TypeError):
+            duration_str = "N/A"
         
         # Generate summary table HTML
         summary_rows = []
