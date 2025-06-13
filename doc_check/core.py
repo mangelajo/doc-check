@@ -69,7 +69,24 @@ Please provide a well-balanced summary that retains the important information ne
 Document to summarize:
 {document_content}
 
-Please provide a concise, high-level summary that captures the essential concepts and main points of this document."""
+Please provide a concise, high-level summary that captures the essential concepts and main points of this document.""",
+
+    "cleanup": """Please clean up the following document by:
+1. Converting any HTML content to clean, readable markdown format
+2. Removing unnecessary or redundant HTML tags while preserving content
+3. Cleaning up excessive markdown formatting (like multiple consecutive headers, redundant emphasis)
+4. Standardizing markdown syntax (consistent header styles, list formatting, etc.)
+5. Removing empty lines that don't serve a structural purpose
+6. Preserving ALL actual content, code examples, links, and essential formatting
+7. Maintaining the document's structure and readability
+8. Converting HTML tables to markdown tables where possible
+
+The goal is to make the document cleaner and more readable while preserving 100% of the actual information content.
+
+Document to clean up:
+{document_content}
+
+Please return the cleaned up version of this document with improved formatting but identical content."""
 }
 
 # Default models
@@ -263,6 +280,63 @@ class DocumentChecker:
             # If we can't write the cache file, just continue without caching
             pass
     
+    def _cleanup_document(self, document_content: str) -> str:
+        """Clean up document by removing unnecessary HTML/markdown tags and converting HTML to markdown."""
+        import re
+        
+        content = document_content
+        
+        # Convert common HTML elements to markdown
+        # Headers
+        content = re.sub(r'<h1[^>]*>(.*?)</h1>', r'# \1', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<h2[^>]*>(.*?)</h2>', r'## \1', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<h3[^>]*>(.*?)</h3>', r'### \1', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<h4[^>]*>(.*?)</h4>', r'#### \1', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<h5[^>]*>(.*?)</h5>', r'##### \1', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<h6[^>]*>(.*?)</h6>', r'###### \1', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Bold and italic
+        content = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<i[^>]*>(.*?)</i>', r'*\1*', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Code
+        content = re.sub(r'<code[^>]*>(.*?)</code>', r'`\1`', content, flags=re.IGNORECASE | re.DOTALL)
+        content = re.sub(r'<pre[^>]*>(.*?)</pre>', r'```\n\1\n```', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Links
+        content = re.sub(r'<a[^>]*href=["\']([^"\']*)["\'][^>]*>(.*?)</a>', r'[\2](\1)', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Lists
+        content = re.sub(r'<ul[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</ul>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<ol[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</ol>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1', content, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Paragraphs and line breaks
+        content = re.sub(r'<p[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</p>', '\n\n', content, flags=re.IGNORECASE)
+        content = re.sub(r'<br[^>]*/?>', '\n', content, flags=re.IGNORECASE)
+        
+        # Remove other common HTML tags but preserve content
+        content = re.sub(r'<div[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</div>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'<span[^>]*>', '', content, flags=re.IGNORECASE)
+        content = re.sub(r'</span>', '', content, flags=re.IGNORECASE)
+        
+        # Clean up excessive whitespace and empty lines
+        content = re.sub(r'\n\s*\n\s*\n', '\n\n', content)  # Multiple empty lines to double
+        content = re.sub(r'[ \t]+\n', '\n', content)  # Trailing whitespace
+        content = re.sub(r'\n[ \t]+', '\n', content)  # Leading whitespace on lines
+        
+        # Clean up markdown formatting issues
+        content = re.sub(r'#{7,}', '######', content)  # Too many header levels
+        content = re.sub(r'\*{3,}', '**', content)  # Too many asterisks for bold
+        
+        return content.strip()
+    
     def summarize_document(self, document_content: str, doc_path: Path) -> str:
         """Summarize the document content using the summarizer model."""
         # Calculate hash of document content for caching
@@ -274,6 +348,16 @@ class DocumentChecker:
         if cached_summary:
             self.console.print(f"[green]Using cached summary[/green] ({cache_path.name})")
             return cached_summary
+        
+        # Handle cleanup mode without using LLM
+        if self.summarize == "cleanup":
+            try:
+                summary = self._cleanup_document(document_content)
+                # Save summary to cache
+                self._save_cached_summary(cache_path, summary)
+                return summary
+            except Exception as e:
+                raise RuntimeError(f"Failed to clean up document: {e}")
         
         # Detect provider for summarizer model
         summarizer_provider = detect_provider_from_model(self.summarizer_model)
