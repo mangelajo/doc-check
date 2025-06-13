@@ -132,17 +132,39 @@ class OllamaProvider:
     
     def _parse_evaluation_result(self, evaluation_text: str) -> Tuple[bool, str]:
         """Parse the evaluation result from the LLM response."""
-        lines = evaluation_text.strip().split('\n')
+        import re
         
         result = False
         explanation = evaluation_text
         
-        for line in lines:
-            line = line.strip()
-            if line.startswith('RESULT:'):
-                result_text = line.replace('RESULT:', '').strip().upper()
-                result = result_text == 'PASS'
-            elif line.startswith('EXPLANATION:'):
-                explanation = line.replace('EXPLANATION:', '').strip()
+        # Strategy 1: Look for structured format with regex (handles multiline explanations)
+        result_match = re.search(r'RESULT:\s*(PASS|FAIL)', evaluation_text, re.IGNORECASE)
+        explanation_match = re.search(r'EXPLANATION:\s*(.+?)(?:\n\n|\Z)', evaluation_text, re.IGNORECASE | re.DOTALL)
+        
+        if result_match:
+            result = result_match.group(1).upper() == 'PASS'
+            if explanation_match:
+                explanation = explanation_match.group(1).strip()
+        else:
+            # Fallback: line-by-line parsing for simple cases
+            lines = evaluation_text.strip().split('\n')
+            explanation_started = False
+            explanation_parts = []
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith('RESULT:'):
+                    result_text = line.replace('RESULT:', '').strip().upper()
+                    result = result_text == 'PASS'
+                elif line.startswith('EXPLANATION:'):
+                    explanation_text = line.replace('EXPLANATION:', '').strip()
+                    if explanation_text:
+                        explanation_parts.append(explanation_text)
+                    explanation_started = True
+                elif explanation_started and line:
+                    explanation_parts.append(line)
+            
+            if explanation_parts:
+                explanation = ' '.join(explanation_parts)
         
         return result, explanation

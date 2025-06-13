@@ -174,7 +174,7 @@ class OpenAIProvider:
         
         # Strategy 1: Look for structured format
         result_match = re.search(r'RESULT:\s*(PASS|FAIL)', evaluation_text, re.IGNORECASE)
-        explanation_match = re.search(r'EXPLANATION:\s*(.+)', evaluation_text, re.IGNORECASE | re.DOTALL)
+        explanation_match = re.search(r'EXPLANATION:\s*(.+?)(?:\n\n|\Z)', evaluation_text, re.IGNORECASE | re.DOTALL)
         
         if result_match:
             passed = result_match.group(1).upper() == 'PASS'
