@@ -67,7 +67,7 @@ class HTMLFormatter(OutputFormatter):
             summary_rows.append(f"""
                 <tr class="{status_class_row}">
                     <td>{i}</td>
-                    <td>{self._escape_html(question_result.name)}</td>
+                    <td><a href="#question-{i}" class="question-link">{self._escape_html(question_result.name)}</a></td>
                     <td class="status {status_class_row}">{status}</td>
                     <td class="evaluation-summary">{evaluation_summary}</td>
                 </tr>
@@ -75,7 +75,7 @@ class HTMLFormatter(OutputFormatter):
             
             # Detailed section
             detailed_sections.append(f"""
-                <div class="question-detail {status_class_row}">
+                <div class="question-detail {status_class_row}" id="question-{i}">
                     <div class="question-header">
                         <h3>Question {i}: {self._escape_html(question_result.name)}</h3>
                         <div class="status-badge {status_class_row}">{status}</div>
@@ -273,6 +273,15 @@ class HTMLFormatter(OutputFormatter):
             font-size: 0.9em;
             line-height: 1.4;
             color: #555;
+        }}
+        .question-link {{
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }}
+        .question-link:hover {{
+            color: #764ba2;
+            text-decoration: underline;
         }}
         .question-detail {{
             margin: 30px 0;
