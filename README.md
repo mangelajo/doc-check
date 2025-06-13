@@ -1,6 +1,15 @@
 # Doc-Check
 
-A CLI tool for checking documentation quality using LLM-based Q&A evaluation.
+A CLI tool for checking documentation quality using LLM-based Q&A evaluation. The purpose of this tool
+is to explore the capabilities of LLMs in evaluating documentation quality by asking specific questions
+and assessing the answers against predefined criteria.
+
+It is designed to integrate with OpenAI, Anthropic, and Ollama models, allowing users to specify
+the model and provider directly in the configuration file or via command line options.
+
+It also supports RAG (Retrieval-Augmented Generation) for large documents, enabling the model to
+retrieve relevant chunks of text instead of processing the entire document at once, with fallback
+to the full document if necessary.
 
 ## Warning
 
@@ -8,7 +17,19 @@ This project has been fully vive-coded using claude-sonnet-4-20250514, and aider
 because of this, I don't feel in a position to claim any license for it, so I am just leaving it as is,
 use or fork at your own risk...
 
+## Preview
+
+![Doc-Check Preview](doc-check-0.png)
+
+Question and answer
+![Doc-Check Preview](doc-check-1.png)
+
+Evaluation
+![Doc-Check Preview](doc-check-2.png)
+
 ## Installation
+
+### Example HTML
 
 ### Using uv (recommended)
 
