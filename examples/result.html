@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doc-Check Results - PASS</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+        .status-badge.pass {
+            background-color: #4CAF50;
+        }
+        .status-badge.fail {
+            background-color: #f44336;
+        }
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+        }
+        .section:last-child {
+            border-bottom: none;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5em;
+            font-weight: 500;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        .stat .label {
+            font-weight: 700;
+            color: #333;
+        }
+        .stat .value {
+            color: #333;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .icon {
+            font-weight: bold;
+            font-size: 1.1em;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .pass-icon {
+            background-color: #4CAF50;
+        }
+        .fail-icon {
+            background-color: #f44336;
+        }
+        .progress-bar {
+            position: relative;
+            width: 100px;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f44336 0%, #ff9800 50%, #4CAF50 100%);
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #333;
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
+        }
+        .results-bar {
+            margin: 20px 0 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .bar-container {
+            display: flex;
+            height: 40px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .bar-segment {
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .pass-segment {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+        .fail-segment {
+            background: linear-gradient(135deg, #f44336, #e53935);
+        }
+        .bar-labels {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .bar-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        .pass-label {
+            color: #4CAF50;
+        }
+        .fail-label {
+            color: #f44336;
+        }
+        .success-rate {
+            color: #667eea;
+            font-weight: 700;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .results-table th {
+            background-color: #f8f9fa;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .results-table td {
+            padding: 15px 10px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        .results-table tr.pass {
+            background-color: #f8fff8;
+        }
+        .results-table tr.fail {
+            background-color: #fff8f8;
+        }
+        .status {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .status.pass {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .status.fail {
+            background-color: #f44336;
+            color: white;
+        }
+        .evaluation-summary {
+            max-width: 400px;
+            word-wrap: break-word;
+            font-size: 0.9em;
+            line-height: 1.4;
+            color: #555;
+        }
+        .question-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .question-link:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        .question-detail {
+            margin: 30px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .question-detail.pass {
+            border-left: 4px solid #4CAF50;
+        }
+        .question-detail.fail {
+            border-left: 4px solid #f44336;
+        }
+        .question-header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .question-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1.2em;
+        }
+        .question-content {
+            padding: 20px;
+        }
+        .question-block, .answer-block, .evaluation-block {
+            margin-bottom: 25px;
+        }
+        .question-block:last-child, .answer-block:last-child, .evaluation-block:last-child {
+            margin-bottom: 0;
+        }
+        .question-block h4, .answer-block h4, .evaluation-block h4 {
+            margin: 0 0 10px 0;
+            color: #555;
+            font-size: 1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .question-text, .answer-text, .evaluation-text {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+        .question-text {
+            white-space: pre-wrap;
+        }
+        .answer-text, .evaluation-text {
+            /* Allow HTML content for markdown conversion */
+        }
+        .answer-text h1, .answer-text h2, .answer-text h3,
+        .evaluation-text h1, .evaluation-text h2, .evaluation-text h3 {
+            margin: 0.5em 0;
+            color: #333;
+        }
+        .answer-text code, .evaluation-text code {
+            background-color: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+        .answer-text pre, .evaluation-text pre {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .answer-text pre code, .evaluation-text pre code {
+            background: none;
+            padding: 0;
+        }
+        .answer-text ul, .answer-text ol,
+        .evaluation-text ul, .evaluation-text ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .answer-text li, .evaluation-text li {
+            margin: 5px 0;
+        }
+        .answer-text p, .evaluation-text p {
+            margin: 10px 0;
+        }
+        .answer-text a, .evaluation-text a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .answer-text a:hover, .evaluation-text a:hover {
+            text-decoration: underline;
+        }
+        .answer-text strong, .evaluation-text strong {
+            font-weight: 600;
+        }
+        .answer-text em, .evaluation-text em {
+            font-style: italic;
+        }
+        /* Table styles for markdown tables */
+        .answer-text table, .evaluation-text table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            border: 1px solid #dee2e6;
+        }
+        .answer-text th, .answer-text td,
+        .evaluation-text th, .evaluation-text td {
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .answer-text th, .evaluation-text th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .answer-text tr:nth-child(even), .evaluation-text tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        /* Blockquote styles */
+        .answer-text blockquote, .evaluation-text blockquote {
+            border-left: 4px solid #667eea;
+            margin: 15px 0;
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            font-style: italic;
+        }
+        /* Horizontal rule styles */
+        .answer-text hr, .evaluation-text hr {
+            border: none;
+            border-top: 2px solid #dee2e6;
+            margin: 20px 0;
+        }
+        /* Error/fallback styles */
+        .markdown-error {
+            border: 1px solid #ffc107;
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .markdown-error p {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        .question-text {
+            font-style: italic;
+            color: #666;
+            border-left: 3px solid #667eea;
+        }
+        .answer-text {
+            color: #333;
+            border-left: 3px solid #28a745;
+        }
+        .evaluation-text {
+            color: #555;
+            border-left: 3px solid #ffc107;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Doc-Check Results</h1>
+            <div class="status-badge pass">PASS</div>
+        </div>
+        
+        <div class="section">
+            <h2>Summary</h2>
+            <div class="results-bar">
+                <div class="bar-container">
+                    <div class="bar-segment pass-segment" style="width: 100.0%"></div>
+                    <div class="bar-segment fail-segment" style="width: 0.0%"></div>
+                </div>
+                <div class="bar-labels">
+                    <div class="bar-label pass-label">
+                        <span class="icon pass-icon">✓</span>
+                        Passed: 4
+                    </div>
+                    <div class="bar-label success-rate">
+                        Success Rate: 100.0%
+                    </div>
+                    
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat">
+                    <span class="label">Total Questions:</span>
+                    <span class="value">4</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Duration:</span>
+                    <span class="value">117.5s</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Start Time:</span>
+                    <span class="value">2025-06-13 16:02:57</span>
+                </div>
+                <div class="stat">
+                    <span class="label">End Time:</span>
+                    <span class="value">2025-06-13 16:04:54</span>
+                </div>
+                
+                <div class="stat">
+                    <span class="label">Summarization Level:</span>
+                    <span class="value">cleanup</span>
+                </div>
+            
+            </div>
+        </div>
+        
+        
+                <div class="section">
+                    <h2>API Usage</h2>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="label">Provider:</span>
+                            <span class="value">anthropic</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Model:</span>
+                            <span class="value">claude-sonnet-4-20250514</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">API Calls:</span>
+                            <span class="value">12</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Total Tokens:</span>
+                            <span class="value">137,786</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Input Tokens:</span>
+                            <span class="value">134,015</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Output Tokens:</span>
+                            <span class="value">3,771</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Estimated Cost:</span>
+                            <span class="value">$0.4586</span>
+                        </div>
+                    </div>
+                </div>
+            
+        
+        <div class="section">
+            <h2>Results Summary</h2>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Evaluation Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr class="pass">
+                    <td>1</td>
+                    <td><a href="#question-1" class="question-link">installation options</a></td>
+                    <td class="status pass">
+                        <span class="icon pass-icon">✓</span>
+                        PASS
+                    </td>
+                    <td class="evaluation-summary">The answer successfully meets both criteria specified in the evaluation. It provides comprehensive d...</td>
+                </tr>
+            
+                <tr class="pass">
+                    <td>2</td>
+                    <td><a href="#question-2" class="question-link">kubernetes install options</a></td>
+                    <td class="status pass">
+                        <span class="icon pass-icon">✓</span>
+                        PASS
+                    </td>
+                    <td class="evaluation-summary">(full document) The answer fully meets the evaluation criteria by providing both Helm and ArgoCD opt...</td>
+                </tr>
+            
+                <tr class="pass">
+                    <td>3</td>
+                    <td><a href="#question-3" class="question-link">installing with pip from main</a></td>
+                    <td class="status pass">
+                        <span class="icon pass-icon">✓</span>
+                        PASS
+                    </td>
+                    <td class="evaluation-summary">(full document) The answer successfully meets both required criteria. It provides two distinct metho...</td>
+                </tr>
+            
+                <tr class="pass">
+                    <td>4</td>
+                    <td><a href="#question-4" class="question-link">serial connection</a></td>
+                    <td class="status pass">
+                        <span class="icon pass-icon">✓</span>
+                        PASS
+                    </td>
+                    <td class="evaluation-summary">The answer correctly identifies the PySerial driver (`jumpstarter_driver_pyserial.driver.PySerial`) ...</td>
+                </tr>
+            
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>Detailed Results</h2>
+            
+                <div class="question-detail pass" id="question-1">
+                    <div class="question-header">
+                        <h3>Question 1: installation options</h3>
+                        <div class="status-badge pass">
+                            <span class="icon pass-icon">✓</span>
+                            PASS
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <div class="question-block">
+                            <h4>Question</h4>
+                            <div class="question-text">What are the install options for jumpstarter?
+Focus on the python framework and service, not the drivers.
+provide install examples for the cli/python framework and the distributed service.
+</div>
+                        </div>
+                        <div class="answer-block">
+                            <h4>Answer</h4>
+                            <div class="answer-text"><p>Based on the documentation, here are the install options for the Jumpstarter Python framework and service:</p>
+<h2 id="python-framework-installation-options">Python Framework Installation Options</h2>
+<h3 id="1-release-packages-installation-recommended-for-most-users">1. Release Packages Installation (Recommended for most users)</h3>
+<p><strong>Global Installation:</strong></p>
+<pre><code class="language-bash">$ pip3 install --extra-index-url https://pkg.jumpstarter.dev/simple jumpstarter-all
+$ mkdir -p &quot;${HOME}/.config/jumpstarter/&quot;
+$ sudo mkdir /etc/jumpstarter
+</code></pre>
+<p><strong>Virtual Environment Installation (Recommended for library usage):</strong></p>
+<pre><code class="language-bash">$ python3 -m venv ~/.venv/jumpstarter
+$ source ~/.venv/jumpstarter/bin/activate
+$ pip3 install --extra-index-url https://pkg.jumpstarter.dev/simple jumpstarter-all
+</code></pre>
+<h3 id="2-installing-from-source-for-latest-features">2. Installing from Source (For latest features)</h3>
+<pre><code class="language-bash">$ sudo dnf install -y uv make git
+$ git clone https://github.com/jumpstarter-dev/jumpstarter.git
+$ cd jumpstarter
+$ rm .python-version
+$ make sync
+$ mkdir -p &quot;${HOME}/.config/jumpstarter/&quot;
+</code></pre>
+<h2 id="available-python-packages">Available Python Packages</h2>
+<p>The framework includes these installable Python packages:</p>
+<ul>
+<li><code>jumpstarter</code>: Core package for exporter interaction and service hosting</li>
+<li><code>jumpstarter-cli</code>: CLI components metapackage including admin and user interfaces</li>
+<li><code>jumpstarter-cli-admin</code>: Admin CLI for controller management and lease control</li>
+<li><code>jumpstarter-driver-*</code>: Drivers for device connectivity</li>
+<li><code>jumpstarter-imagehash</code>: Image checking library for video inputs</li>
+<li><code>jumpstarter-testing</code>: Tools for Jumpstarter-powered pytest integration</li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>Python &gt;=3.11 is required for all installation methods</li>
+<li>The documentation mentions that packages are available from the <a href="https://pkg.jumpstarter.dev/">Jumpstarter Python packages</a> repository</li>
+</ul>
+<p>The documentation indicates that Jumpstarter can be set up as a Kubernetes service, but specific installation examples for the distributed service are referenced but not detailed in the provided excerpt.</p></div>
+                        </div>
+                        <div class="evaluation-block">
+                            <h4>Evaluation</h4>
+                            <div class="evaluation-text">The answer successfully meets both criteria specified in the evaluation. It provides comprehensive details on installing Jumpstarter with pip locally, including multiple installation methods (release packages via pip with the custom index URL, virtual environment setup, and source installation). The answer also acknowledges that the distributed service runs in Kubernetes, stating &quot;The documentation indicates that Jumpstarter can be set up as a Kubernetes service, but specific installation examples for the distributed service are referenced but not detailed in the provided excerpt.&quot; While it doesn&#x27;t provide detailed Kubernetes installation examples, it appropriately explains that this information wasn&#x27;t available in the source material, which demonstrates honest reporting of the available information.</div>
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="question-detail pass" id="question-2">
+                    <div class="question-header">
+                        <h3>Question 2: kubernetes install options</h3>
+                        <div class="status-badge pass">
+                            <span class="icon pass-icon">✓</span>
+                            PASS
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <div class="question-block">
+                            <h4>Question</h4>
+                            <div class="question-text">What options are available when installing the service in kubernetes or openshift? can it be installed using gitops?
+</div>
+                        </div>
+                        <div class="answer-block">
+                            <h4>Answer</h4>
+                            <div class="answer-text"><p>Based on the documentation, when installing the Jumpstarter service in Kubernetes or OpenShift, you have several options available:</p>
+<h2 id="installation-options">Installation Options</h2>
+<h3 id="1-kubernetes-with-helm">1. <strong>Kubernetes with Helm</strong></h3>
+<pre><code class="language-bash">$ helm upgrade jumpstarter --install oci://quay.io/jumpstarter-dev/helm/jumpstarter \
+        --create-namespace --namespace jumpstarter-lab \
+        --set global.baseDomain=jumpstarter.example.com \
+        --set global.metrics.enabled=true \
+        --set jumpstarter-controller.grpc.mode=ingress \
+        --version=0.6.0
+</code></pre>
+<h3 id="2-openshift-with-helm">2. <strong>OpenShift with Helm</strong></h3>
+<pre><code class="language-bash">$ helm upgrade jumpstarter --install oci://quay.io/jumpstarter-dev/helm/jumpstarter \
+          --create-namespace --namespace jumpstarter-lab \
+          --set global.baseDomain=jumpstarter.example.com \
+          --set global.metrics.enabled=true \
+          --set jumpstarter-controller.grpc.mode=route \
+          --version=0.6.0
+</code></pre>
+<h3 id="3-openshift-with-argocd-gitops">3. <strong>OpenShift with ArgoCD (GitOps)</strong></h3>
+<p>Yes, it can be installed using GitOps! The documentation provides a complete example using ArgoCD:</p>
+<p>First, create and label a namespace:</p>
+<pre><code class="language-bash">$ kubectl create namespace jumpstarter-lab
+$ kubectl label namespace jumpstarter-lab argocd.argoproj.io/managed-by=openshift-gitops
+</code></pre>
+<p>Then create an ArgoCD Application:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jumpstarter
+  namespace: openshift-gitops
+spec:
+  destination:
+    name: in-cluster
+    namespace: jumpstarter-lab
+  project: default
+  source:
+    chart: jumpstarter
+    helm:
+      parameters:
+      - name: global.baseDomain
+        value: devel.jumpstarter.dev
+      - name: global.metrics.enabled
+        value: &quot;true&quot;
+      - name: jumpstarter-controller.controllerSecret
+        value: &quot;pick-a-secret-DONT-USE-THIS-DEFAULT&quot;
+      - name: jumpstarter-controller.routerSecret
+        value: &quot;again-pick-a-secret-DONT-USE-THIS-DEFAULT&quot;
+      - name: jumpstarter-controller.grpc.mode
+        value: &quot;route&quot;
+    repoURL: quay.io/jumpstarter-dev/helm
+    targetRevision: &quot;0.6.0&quot;
+</code></pre>
+<h3 id="4-local-development-options">4. <strong>Local Development Options</strong></h3>
+<p><strong>Minikube:</strong></p>
+<pre><code class="language-bash">$ jmp admin install --ip $(minikube ip)
+</code></pre>
+<p><strong>Kind:</strong></p>
+<pre><code class="language-bash">$ jmp admin install
+</code></pre>
+<h3 id="5-cli-based-installation">5. <strong>CLI-based Installation</strong></h3>
+<p>The Jumpstarter CLI provides an <code>install</code> command that simplifies installation:</p>
+<pre><code class="language-bash">$ jmp admin install [OPTIONS]
+</code></pre>
+<p>With options like:<br />
+- <code>--helm</code>: Path to helm executable<br />
+- <code>--chart</code>: URL of Jumpstarter helm chart<br />
+- <code>--namespace</code>: Installation namespace<br />
+- <code>--basedomain</code>: Base domain for services<br />
+- <code>--nodeport/--ingress/--route</code>: Routing method</p>
+<h2 id="key-configuration-options">Key Configuration Options</h2>
+<p>The installation supports various configuration parameters:<br />
+- <strong>Routing modes</strong>: <code>ingress</code> (Kubernetes), <code>route</code> (OpenShift), <code>nodeport</code> (local)<br />
+- <strong>Metrics</strong>: Can be enabled/disabled with <code>global.metrics.enabled</code><br />
+- <strong>Base domain</strong>: Configure service endpoints with <code>global.baseDomain</code><br />
+- <strong>Secrets</strong>: Controller and router secrets for security<br />
+- <strong>Version</strong>: Specify chart version with <code>--version</code></p>
+<p><strong>Answer to GitOps question</strong>: Yes, Jumpstarter can definitely be installed using GitOps, specifically through ArgoCD as demonstrated in the OpenShift with ArgoCD section of the documentation.</p></div>
+                        </div>
+                        <div class="evaluation-block">
+                            <h4>Evaluation</h4>
+                            <div class="evaluation-text">(full document) The answer fully meets the evaluation criteria by providing both Helm and ArgoCD options. It clearly demonstrates Helm installation methods for both Kubernetes and OpenShift with specific command examples, and provides a comprehensive ArgoCD (GitOps) installation example including the complete YAML configuration for the ArgoCD Application. The answer goes beyond the minimum requirements by also including additional installation options like CLI-based installation and local development setups, making it a thorough and complete response to the question.</div>
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="question-detail pass" id="question-3">
+                    <div class="question-header">
+                        <h3>Question 3: installing with pip from main</h3>
+                        <div class="status-badge pass">
+                            <span class="icon pass-icon">✓</span>
+                            PASS
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <div class="question-block">
+                            <h4>Question</h4>
+                            <div class="question-text">How can I install the latest version of the python framework from main?</div>
+                        </div>
+                        <div class="answer-block">
+                            <h4>Answer</h4>
+                            <div class="answer-text"><p>Based on the documentation, to install the latest version of the Python framework from main, you have several options:</p>
+<h2 id="installing-from-the-main-branch-package-index">Installing from the main branch package index</h2>
+<p>You can install from the main branch using the dedicated package index:</p>
+<pre><code class="language-bash">$ pip3 install --extra-index-url https://pkg.jumpstarter.dev/main/ jumpstarter-all
+</code></pre>
+<p>The documentation explains that the <code>main</code> index is "equivalent to installing from sources" and tracks the main branch.</p>
+<h2 id="installing-directly-from-source">Installing directly from source</h2>
+<p>Alternatively, you can install directly from the source repository:</p>
+<pre><code class="language-bash">$ sudo dnf install -y uv make git
+$ git clone https://github.com/jumpstarter-dev/jumpstarter.git
+$ cd jumpstarter
+$ rm .python-version
+$ make sync
+$ mkdir -p &quot;${HOME}/.config/jumpstarter/&quot;
+$ sudo mkdir /etc/jumpstarter
+</code></pre>
+<p>After installation from source, you need to activate the virtual environment to use Jumpstarter CLI commands:</p>
+<pre><code class="language-bash">$ source .venv/bin/activate
+$ jmp version
+</code></pre>
+<h2 id="package-indexes-available">Package indexes available</h2>
+<p>The documentation lists these package indexes:</p>
+<ul>
+<li><strong>main</strong>: Index tracking the main branch, equivalent to installing from sources</li>
+<li><strong>releases</strong>: Release or release-candidate versions  </li>
+<li><strong>release-0.6</strong>: Index tracking a stable branch</li>
+</ul>
+<p>The main branch undergoes "active development with frequent feature additions" and the documentation notes they "conduct thorough testing and recommend installing the latest version from the <code>main</code> branch."</p>
+<p>Both methods will give you the latest version from the main branch, with the package index method being simpler if you just want to install the packages, and the source method being better if you plan to contribute or need the full development environment.</p></div>
+                        </div>
+                        <div class="evaluation-block">
+                            <h4>Evaluation</h4>
+                            <div class="evaluation-text"><p>(full document) The answer successfully meets both required criteria. It provides two distinct methods: (1) installing from the main branch package index using the exact command <code>pip3 install --extra-index-url https://pkg.jumpstarter.dev/main/ jumpstarter-all</code>, and (2) installing directly from git source using make (which includes the git clone step and make sync command). The answer is well-structured, provides clear code examples for both methods, and includes additional context about the different package indexes and when each method might be preferred.</p></div>
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="question-detail pass" id="question-4">
+                    <div class="question-header">
+                        <h3>Question 4: serial connection</h3>
+                        <div class="status-badge pass">
+                            <span class="icon pass-icon">✓</span>
+                            PASS
+                        </div>
+                    </div>
+                    <div class="question-content">
+                        <div class="question-block">
+                            <h4>Question</h4>
+                            <div class="question-text">Which driver driver could I use to talk to a target dut via serial port?, for example my target is available in /dev/ttyUSB2.
+Include a configuration example for the exporter.
+</div>
+                        </div>
+                        <div class="answer-block">
+                            <h4>Answer</h4>
+                            <div class="answer-text"><p>Based on the documentation, you can use the <strong>PySerial driver</strong> to communicate with a target DUT via serial port.</p>
+<h2 id="driver-information">Driver Information</h2>
+<p>The PySerial driver is provided by the <code>jumpstarter-driver-pyserial</code> package and offers functionality for serial port communication.</p>
+<h2 id="configuration-example">Configuration Example</h2>
+<p>Here's how you would configure the exporter for your target at <code>/dev/ttyUSB2</code>:</p>
+<pre><code class="language-yaml">serial:
+  type: jumpstarter_driver_pyserial.driver.PySerial
+  config:
+    url: &quot;/dev/ttyUSB2&quot;
+    baudrate: 115200
+</code></pre>
+<h2 id="configuration-parameters">Configuration Parameters</h2>
+<p>The PySerial driver supports the following configuration parameters:</p>
+<ul>
+<li><strong>url</strong> (required): The serial port to connect to, in pyserial format. In your case, this would be <code>/dev/ttyUSB2</code></li>
+<li><strong>baudrate</strong> (optional): The baudrate to use for the serial connection. Default is 115200</li>
+<li><strong>check_existing</strong> (optional): Check if the serial port exists during exporter initialization. Set to false if connecting to a dynamically created port (like USB from your DUT). Default is True</li>
+</ul>
+<p>So for your specific use case with <code>/dev/ttyUSB2</code>, the minimal configuration would be:</p>
+<pre><code class="language-yaml">serial:
+  type: jumpstarter_driver_pyserial.driver.PySerial
+  config:
+    url: &quot;/dev/ttyUSB2&quot;
+</code></pre>
+<p>This will use the default baudrate of 115200 and enable port existence checking during initialization.</p></div>
+                        </div>
+                        <div class="evaluation-block">
+                            <h4>Evaluation</h4>
+                            <div class="evaluation-text"><p>The answer correctly identifies the PySerial driver (<code>jumpstarter_driver_pyserial.driver.PySerial</code>) as the recommended solution for serial port communication with a target DUT. It provides a proper configuration example that includes the required <code>url: "/dev/ttyUSB2"</code> parameter as specified in the criteria. The answer goes beyond the minimum requirements by providing additional context about optional parameters (baudrate, check_existing) and includes both a detailed configuration example and a minimal one, making it comprehensive and helpful while meeting all the specified criteria.</p></div>
+                        </div>
+                    </div>
+                </div>
+            
+        </div>
+        
+        <div class="timestamp">
+            Generated on 2025-06-13 16:04:54
+        </div>
+    </div>
+</body>
+</html>

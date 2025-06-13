@@ -2,6 +2,12 @@
 
 A CLI tool for checking documentation quality using LLM-based Q&A evaluation.
 
+## Warning
+
+This project has been fully vive-coded using claude-sonnet-4-20250514, and aider in a couple of days
+because of this, I don't feel in a position to claim any license for it, so I am just leaving it as is,
+use or fork at your own risk...
+
 ## Installation
 
 ### Using uv (recommended)
@@ -11,17 +17,8 @@ A CLI tool for checking documentation quality using LLM-based Q&A evaluation.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Create and activate virtual environment
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install the package in development mode
-uv pip install -e .
-```
-
-### Using pip
-
-```bash
-pip install -e .
+uv sync
+source .venv/bin/activate
 ```
 
 ## Usage
@@ -61,7 +58,7 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 3. Run the check:
 
 ```bash
-doc-check check doc-check.yaml
+doc-check check examples/jumpstarter-check.yaml
 ```
 
 ### Configuration File Options
@@ -94,7 +91,12 @@ debug: false
 questions:
   - name: installation
     question: How do I install this software?
-    answerEvaluation: The answer should provide clear installation instructions.
+    answerEvaluation: |
+      The answer should provide clear installation instructions, including:
+      - Prerequisites or system requirements
+      - Step-by-step installation commands
+      - How to verify the installation worked
+      - Provide at least this example: ./my-install-method.sh
 ```
 
 CLI options always override configuration file settings.
@@ -153,7 +155,7 @@ doc-check check doc-check.yaml --model claude-sonnet-4-20250514
 doc-check check doc-check.yaml --model llama3.2 --provider ollama
 
 # Summarize document before checking (for large documents)
-doc-check check doc-check.yaml --summarize light
+doc-check check doc-check.yaml --summarize minimal
 
 # Use RAG for large documents with fallback
 doc-check check doc-check.yaml --use-rag --rag-fallback --rag-chunk-size 1024
@@ -231,27 +233,3 @@ All of these can be overridden by CLI options:
 - `debug`: Show detailed debug information (boolean)
 
 See the `examples/` directory for complete configuration examples.
-
-## Exit Codes
-
-- `0`: All questions passed
-- `1`: One or more questions failed or an error occurred
-
-## Development
-
-### Using uv for development
-
-```bash
-# Install development dependencies
-uv pip install -e ".[dev]"
-
-# Run tests
-uv run pytest
-
-# Format code
-uv run black .
-uv run isort .
-
-# Type checking
-uv run mypy doc_check
-```
