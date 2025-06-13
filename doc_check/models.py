@@ -1,8 +1,9 @@
 """Data models for doc-check."""
 
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+import json
 
 
 class Question(BaseModel):
@@ -62,6 +63,10 @@ class ApiUsage(BaseModel):
 
 class DocCheckResult(BaseModel):
     """Overall result of document checking."""
+    model_config = ConfigDict(json_encoders={
+        datetime: lambda v: v.isoformat() if v else None
+    })
+    
     total_questions: int
     passed_questions: int
     failed_questions: int
@@ -84,3 +89,13 @@ class DocCheckResult(BaseModel):
         if self.start_time and self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return None
+    
+    def model_dump_json(self, **kwargs):
+        """Custom JSON serialization that handles datetime objects."""
+        def json_encoder(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        
+        data = self.model_dump(**kwargs)
+        return json.dumps(data, default=json_encoder, **kwargs)

@@ -170,14 +170,25 @@ def check(
         
         # Save to file if requested
         if output:
-            if format == 'html':
+            # Auto-detect format from file extension if format is 'auto'
+            actual_format = format
+            if format == 'auto':
+                suffix = output.suffix.lower()
+                if suffix == '.html':
+                    actual_format = 'html'
+                elif suffix in ['.yaml', '.yml']:
+                    actual_format = 'yaml'
+                else:
+                    actual_format = 'json'
+            
+            if actual_format == 'html':
                 from .output import get_formatter
                 formatter_class = get_formatter('html')
                 formatter = formatter_class(output.parent if output.parent != Path('.') else None)
                 output_path = formatter.write_results(result, output.stem)
                 console.print(f"[green]HTML results saved to {output_path}[/green]")
             else:
-                save_results(result, output, format)
+                save_results(result, output, actual_format)
                 console.print(f"[green]Results saved to {output}[/green]")
         
         # Save additional output format if requested
@@ -214,7 +225,6 @@ def display_results(console: Console, result: DocCheckResult, verbose: bool) -> 
 
 def save_results(result: DocCheckResult, output_path: Path, format: str = 'auto') -> None:
     """Save results to a file in the specified format."""
-    import json
     import yaml
     
     # Auto-detect format from file extension
@@ -231,7 +241,8 @@ def save_results(result: DocCheckResult, output_path: Path, format: str = 'auto'
         if format == 'yaml':
             yaml.dump(data, f, default_flow_style=False, allow_unicode=True, indent=2)
         else:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            # Use the custom JSON serialization method
+            f.write(result.model_dump_json(indent=2))
 
 
 @cli.command()
