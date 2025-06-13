@@ -329,6 +329,10 @@ class HTMLFormatter(OutputFormatter):
         .fail-label {{
             color: #f44336;
         }}
+        .success-rate {{
+            color: #667eea;
+            font-weight: 700;
+        }}
         .results-table {{
             width: 100%;
             border-collapse: collapse;
@@ -479,6 +483,9 @@ class HTMLFormatter(OutputFormatter):
                         <span class="icon pass-icon">✓</span>
                         Passed: {result.passed_questions}
                     </div>
+                    <div class="bar-label success-rate">
+                        Success Rate: {result.success_rate:.1f}%
+                    </div>
                     <div class="bar-label fail-label">
                         <span class="icon fail-icon">✗</span>
                         Failed: {result.failed_questions}
@@ -489,27 +496,6 @@ class HTMLFormatter(OutputFormatter):
                 <div class="stat">
                     <span class="label">Total Questions:</span>
                     <span class="value">{result.total_questions}</span>
-                </div>
-                <div class="stat">
-                    <span class="label">Passed:</span>
-                    <span class="value">
-                        <span class="icon pass-icon">✓</span> {result.passed_questions}
-                    </span>
-                </div>
-                <div class="stat">
-                    <span class="label">Failed:</span>
-                    <span class="value">
-                        <span class="icon fail-icon">✗</span> {result.failed_questions}
-                    </span>
-                </div>
-                <div class="stat">
-                    <span class="label">Success Rate:</span>
-                    <span class="value">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: {result.success_rate}%"></div>
-                            <span class="progress-text">{result.success_rate:.1f}%</span>
-                        </div>
-                    </span>
                 </div>
                 <div class="stat">
                     <span class="label">Duration:</span>
