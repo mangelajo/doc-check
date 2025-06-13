@@ -32,7 +32,7 @@ Answer: {answer}
 Evaluation Criteria: {evaluation_criteria}
 
 Please respond with:
-1. PASS or FAIL
+1. PASS (if meets the criteria) or FAIL (Doesn't meet the criteria)
 2. Brief explanation of your evaluation
 
 Format your response as:

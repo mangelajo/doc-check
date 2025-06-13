@@ -1,22 +1,28 @@
-file: output.md
+file: output2.md
 questions:
    - name: installation options
-     # the question is passed to the LLM with the document context, perhaps a summary, or accessible in RAG.
      question: |
-       What are the install options for jumpstarter?
-     
-     # once the answer from the LLM has been obtained, we should use the expectedInAnswer to evaluate
-     # the provided answer with the following criteria, this context should not be passed to the LLM
-     # when asking the question.
+      What are the install options for jumpstarter?
+      Focus on the python framework and service, not the drivers.
+      provide install examples for the cli/python framework, and the service install options.
      answerEvaluation: |
        The answer should contain details on installing jumpstarter with pip locally,
        but also explain that the distributed service can be installed with helm or
        argoCD into a cluster.
 
-       It should recommend using a virtual environment for python.
-
-   - name: installing with pip
-     question: When installing with pip, how can I install the latest version from main.
+   - name: installing with pip from main
+     question: How can I install the latest version of the python framework from main?
      answerEvaluation: |
-       Two methods should be offered, one is installing from git and using uv or make, the
+       At least two methods should be offered, one is installing from git and using uv or make, the
        other option should include using pip3 install --extra-index-url https://pkg.jumpstarter.dev/main/simple jumpstarter-all
+
+   - name: serial connection
+     question: |
+      Which driver driver could I use to talk to a target dut via serial port?, for example my target is available in /dev/ttyUSB2.
+      Include a configuration example for the exporter.
+     answerEvaluation: |
+       The recommended driver should be jumpstarter_driver_pyserial.driver.PySerial
+       It should recommend using
+       config:
+        url: "/dev/ttyUSB2"
+

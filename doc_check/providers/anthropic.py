@@ -10,9 +10,11 @@ from ..models import ApiUsage
 from ..pricing import ANTHROPIC_PRICING
 
 # System prompts
-QUESTION_ANSWERING_SYSTEM_PROMPT = "You are a helpful assistant that answers questions about documentation accurately and comprehensively."
+QUESTION_ANSWERING_SYSTEM_PROMPT = """You are a helpful assistant that answers questions about documentation accurately
+and comprehensively. Don't propose alternative solutions which aren't explicitly documented.
+"""
 EVALUATION_SYSTEM_PROMPT = "You are an expert evaluator. Carefully assess whether the answer meets the specified criteria. Be strict but fair in your evaluation."
-SUMMARIZATION_SYSTEM_PROMPT = "You are an expert document summarizer. Create comprehensive, detailed summaries that preserve all important information."
+SUMMARIZATION_SYSTEM_PROMPT = "You are an expert document cleaner. Update the document according to the instructions provided by the user."
 
 # Question answering prompt template
 QUESTION_PROMPT_TEMPLATE = """Based on the following document, please answer this question:
@@ -22,7 +24,8 @@ Question: {question}
 Document:
 {document_content}
 
-Please provide a comprehensive answer based on the information in the document."""
+Please provide a comprehensive answer based on the information in the document, do not provide alternatives outside of the explicit
+examples in the documentation."""
 
 # Evaluation prompt template
 EVALUATION_PROMPT_TEMPLATE = """Please evaluate the following answer against the given criteria.

@@ -19,20 +19,7 @@ from .providers import OpenAIProvider, AnthropicProvider, OllamaProvider
 
 # Summarization prompt templates
 SUMMARIZATION_PROMPTS = {
-    "minimal": """Please provide a minimal summary of the following document. The summary should:
-1. Preserve nearly all key information, concepts, and details
-2. Maintain the exact structure and organization of the original
-3. Include all technical details, examples, and specifications
-4. Be comprehensive enough to answer any detailed questions about the document's content
-5. Preserve all code examples, configuration details, and specific instructions
-6. Only remove redundant phrases and minor formatting - aim to reduce length by about 5-10% while keeping all essential content
-
-Document to summarize:
-{document_content}
-
-Please provide a very detailed summary that retains virtually all essential information needed to answer questions about this document.""",
-
-    "light": """Please provide a light summary of the following document. The summary should:
+    "light": """Please provide a minimal summary of the following document. The summary should:
 1. Preserve most key information, concepts, and details
 2. Maintain the structure and organization of the original
 3. Include all important technical details, examples, and specifications
@@ -71,17 +58,19 @@ Document to summarize:
 
 Please provide a concise, high-level summary that captures the essential concepts and main points of this document.""",
 
-    "cleanup": """Please clean up the following document by:
+    "minimal": """Please clean up the following document by:
 1. Converting any HTML content to clean, readable markdown format
 2. Removing unnecessary or redundant HTML tags while preserving content
 3. Cleaning up excessive markdown formatting (like multiple consecutive headers, redundant emphasis)
 4. Standardizing markdown syntax (consistent header styles, list formatting, etc.)
-5. Removing empty lines that don't serve a structural purpose
+5. Removing empty lines that don't serve a structural purpose, but not in code snippets
 6. Preserving ALL actual content, code examples, links, and essential formatting
 7. Maintaining the document's structure and readability
 8. Converting HTML tables to markdown tables where possible
+9. Remove any unnecessary styling or formatting that does not affect the content
 
-The goal is to make the document cleaner and more readable while preserving 100% of the actual information content.
+The goal is to make the document cleaner and more readable while preserving 100% of the actual information content
+and code snippets formatting.
 
 Document to clean up:
 {document_content}
@@ -359,9 +348,7 @@ class DocumentChecker:
             except Exception as e:
                 raise RuntimeError(f"Failed to clean up document: {e}")
         
-        # Detect provider for summarizer model
-        summarizer_provider = detect_provider_from_model(self.summarizer_model)
-        
+
         # Get summarization prompt based on level
         prompt_template = SUMMARIZATION_PROMPTS.get(self.summarize, SUMMARIZATION_PROMPTS["medium"])
         prompt = prompt_template.format(document_content=document_content)
