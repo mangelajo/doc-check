@@ -6,6 +6,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from .base import OutputFormatter
 from ..models import DocCheckResult
@@ -93,3 +94,50 @@ Estimated Cost: ${usage.estimated_cost:.4f}"""
                 else:
                     self.console.print(f"[yellow]Answer:[/yellow] {question_result.answer}")
                     self.console.print(f"[blue]Evaluation:[/blue] {question_result.evaluation_result}")
+    
+    def display_debug_prompt(self, question: str, document_content: str, prompt_type: str) -> None:
+        """Display debug information about the prompt being sent to the model."""
+        # Import here to avoid circular imports
+        if prompt_type == "question":
+            from ..providers.openai import QUESTION_PROMPT_TEMPLATE
+            prompt = QUESTION_PROMPT_TEMPLATE.format(
+                question=question,
+                document_content=document_content
+            )
+            title = "🔍 Debug: Question Prompt"
+        else:
+            prompt = f"Question: {question}\nDocument: {document_content}"
+            title = "🔍 Debug: Prompt"
+        
+        # Truncate very long prompts for display
+        if len(prompt) > 2000:
+            prompt = prompt[:2000] + "\n\n... [truncated for display]"
+        
+        self.console.print(Panel(
+            prompt,
+            title=title,
+            border_style="magenta",
+            padding=(1, 2)
+        ))
+    
+    def display_debug_evaluation(self, question: str, answer: str, evaluation_criteria: str) -> None:
+        """Display debug information about the evaluation prompt being sent to the model."""
+        # Import here to avoid circular imports
+        from ..providers.openai import EVALUATION_PROMPT_TEMPLATE
+        
+        prompt = EVALUATION_PROMPT_TEMPLATE.format(
+            question=question,
+            answer=answer,
+            evaluation_criteria=evaluation_criteria
+        )
+        
+        # Truncate very long prompts for display
+        if len(prompt) > 2000:
+            prompt = prompt[:2000] + "\n\n... [truncated for display]"
+        
+        self.console.print(Panel(
+            prompt,
+            title="🔍 Debug: Evaluation Prompt",
+            border_style="magenta",
+            padding=(1, 2)
+        ))

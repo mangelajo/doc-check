@@ -33,6 +33,7 @@ def cli():
 @click.option('--provider', type=click.Choice(['openai', 'anthropic', 'ollama']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--verbose-dialog', is_flag=True, help='Show questions and answers in real-time as they are processed')
+@click.option('--debug', is_flag=True, help='Show detailed debug information including prompts sent to the model')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'html', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive', 'cleanup']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only, cleanup: remove unnecessary markdown/HTML tags and convert HTML to markdown')
@@ -54,6 +55,7 @@ def check(
     summarize: Optional[str],
     summarizer_model: Optional[str],
     verbose_dialog: bool,
+    debug: bool,
     output_format: Optional[str],
     output_dir: Optional[Path],
     use_rag: bool,
@@ -97,6 +99,7 @@ def check(
             summarize=summarize,
             summarizer_model=summarizer_model,
             verbose_dialog=verbose_dialog,
+            debug=debug,
             use_rag=use_rag,
             rag_chunk_size=rag_chunk_size,
             rag_chunk_overlap=rag_chunk_overlap,
@@ -206,6 +209,7 @@ def validate(config_file: Path) -> None:
 @click.option('--provider', type=click.Choice(['openai', 'anthropic', 'ollama']), default='openai', help='API provider to use (default: openai)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--verbose-dialog', is_flag=True, help='Show questions and answers in real-time as they are processed')
+@click.option('--debug', is_flag=True, help='Show detailed debug information including prompts sent to the model')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
 @click.option('--format', type=click.Choice(['json', 'yaml', 'html', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive', 'cleanup']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only, cleanup: remove unnecessary markdown/HTML tags and convert HTML to markdown')
@@ -226,6 +230,7 @@ def main(
     format: str,
     summarize: Optional[str],
     summarizer_model: Optional[str],
+    debug: bool,
     verbose_dialog: bool,
     output_format: Optional[str],
     output_dir: Optional[Path],
@@ -257,7 +262,7 @@ def main(
             provider = detected_provider
             console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
     
-    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, output_format, output_dir, use_rag, rag_chunk_size, rag_chunk_overlap, rag_top_k)
+    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, debug, output_format, output_dir, use_rag, rag_chunk_size, rag_chunk_overlap, rag_top_k)
 
 
 if __name__ == '__main__':

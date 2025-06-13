@@ -121,7 +121,7 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False, use_rag: bool = False, rag_chunk_size: int = 512, rag_chunk_overlap: int = 50, rag_top_k: int = 5):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False, debug: bool = False, use_rag: bool = False, rag_chunk_size: int = 512, rag_chunk_overlap: int = 50, rag_top_k: int = 5):
         """Initialize the document checker.
         
         Args:
@@ -131,6 +131,7 @@ class DocumentChecker:
             summarize: Level of summarization to apply ('light', 'medium', 'aggressive', or None).
             summarizer_model: Model to use for document summarization.
             verbose_dialog: Whether to show questions and answers in real-time.
+            debug: Whether to show detailed debug information including prompts.
             use_rag: Whether to use RAG for document retrieval.
             rag_chunk_size: Size of each document chunk for RAG indexing.
             rag_chunk_overlap: Overlap between chunks for RAG indexing.
@@ -141,6 +142,7 @@ class DocumentChecker:
         self.summarize = summarize
         self.summarizer_model = summarizer_model or DEFAULT_SUMMARIZER_MODEL
         self.verbose_dialog = verbose_dialog
+        self.debug = debug
         self.use_rag = use_rag
         self.rag_chunk_size = rag_chunk_size
         self.rag_chunk_overlap = rag_chunk_overlap
@@ -242,13 +244,27 @@ class DocumentChecker:
         if self.use_rag and self.rag_indexer:
             # Use RAG to get relevant context
             context = self.rag_indexer.get_context_for_question(question)
-            return self.main_provider.ask(context, question)
+            content_to_use = context
         else:
-            return self.main_provider.ask(document_content, question)
+            content_to_use = document_content
+        
+        # Show debug information if requested
+        if self.debug:
+            from .output.cli import CLIFormatter
+            formatter = CLIFormatter(console=self.console)
+            formatter.display_debug_prompt(question, content_to_use, "question")
+        
+        return self.main_provider.ask(content_to_use, question)
     
     
     def evaluate_answer(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
         """Evaluate an answer against criteria using LLM."""
+        # Show debug information if requested
+        if self.debug:
+            from .output.cli import CLIFormatter
+            formatter = CLIFormatter(console=self.console)
+            formatter.display_debug_evaluation(question, answer, evaluation_criteria)
+        
         return self.main_provider.evaluate(question, answer, evaluation_criteria)
     
     
