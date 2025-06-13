@@ -21,6 +21,9 @@ dependencies = [
     "anthropic>=0.54.0",
     "markdown>=3.8",
     "requests>=2.32.4",
+    "sentence-transformers>=2.2.0",
+    "faiss-cpu>=1.7.0",
+    "numpy>=1.21.0",
 ]
 
 [project.optional-dependencies]

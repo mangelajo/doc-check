@@ -39,6 +39,10 @@ def cli():
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 @click.option('--output-format', type=click.Choice(['html', 'junit']), help='Additional output format (html or junit)')
 @click.option('--output-dir', type=click.Path(path_type=Path), help='Directory for additional output files (default: current directory)')
+@click.option('--use-rag', is_flag=True, help='Use RAG (Retrieval-Augmented Generation) to provide only relevant document chunks to the model')
+@click.option('--rag-chunk-size', type=int, default=512, help='Size of each document chunk for RAG indexing (default: 512)')
+@click.option('--rag-chunk-overlap', type=int, default=50, help='Overlap between chunks for RAG indexing (default: 50)')
+@click.option('--rag-top-k', type=int, default=5, help='Number of top relevant chunks to retrieve for each question (default: 5)')
 def check(
     config_file: Path,
     api_key: Optional[str],
@@ -51,7 +55,11 @@ def check(
     summarizer_model: Optional[str],
     verbose_dialog: bool,
     output_format: Optional[str],
-    output_dir: Optional[Path]
+    output_dir: Optional[Path],
+    use_rag: bool,
+    rag_chunk_size: int,
+    rag_chunk_overlap: int,
+    rag_top_k: int
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -88,7 +96,11 @@ def check(
             provider=provider,
             summarize=summarize,
             summarizer_model=summarizer_model,
-            verbose_dialog=verbose_dialog
+            verbose_dialog=verbose_dialog,
+            use_rag=use_rag,
+            rag_chunk_size=rag_chunk_size,
+            rag_chunk_overlap=rag_chunk_overlap,
+            rag_top_k=rag_top_k
         )
         
         # Run the check
@@ -200,6 +212,10 @@ def validate(config_file: Path) -> None:
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 @click.option('--output-format', type=click.Choice(['html', 'junit']), help='Additional output format (html or junit)')
 @click.option('--output-dir', type=click.Path(path_type=Path), help='Directory for additional output files (default: current directory)')
+@click.option('--use-rag', is_flag=True, help='Use RAG (Retrieval-Augmented Generation) to provide only relevant document chunks to the model')
+@click.option('--rag-chunk-size', type=int, default=512, help='Size of each document chunk for RAG indexing (default: 512)')
+@click.option('--rag-chunk-overlap', type=int, default=50, help='Overlap between chunks for RAG indexing (default: 50)')
+@click.option('--rag-top-k', type=int, default=5, help='Number of top relevant chunks to retrieve for each question (default: 5)')
 def main(
     config_file: Path,
     api_key: Optional[str],
@@ -212,7 +228,11 @@ def main(
     summarizer_model: Optional[str],
     verbose_dialog: bool,
     output_format: Optional[str],
-    output_dir: Optional[Path]
+    output_dir: Optional[Path],
+    use_rag: bool,
+    rag_chunk_size: int,
+    rag_chunk_overlap: int,
+    rag_top_k: int
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -237,7 +257,7 @@ def main(
             provider = detected_provider
             console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
     
-    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, output_format, output_dir)
+    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, output_format, output_dir, use_rag, rag_chunk_size, rag_chunk_overlap, rag_top_k)
 
 
 if __name__ == '__main__':

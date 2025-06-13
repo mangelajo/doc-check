@@ -16,6 +16,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeEl
 
 from .models import DocCheckConfig, DocCheckResult, QuestionResult, ApiUsage
 from .providers import OpenAIProvider, AnthropicProvider, OllamaProvider
+from .rag import RAGIndexer
 
 # Summarization prompt templates
 SUMMARIZATION_PROMPTS = {
@@ -120,7 +121,7 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False, use_rag: bool = False, rag_chunk_size: int = 512, rag_chunk_overlap: int = 50, rag_top_k: int = 5):
         """Initialize the document checker.
         
         Args:
@@ -130,13 +131,22 @@ class DocumentChecker:
             summarize: Level of summarization to apply ('light', 'medium', 'aggressive', or None).
             summarizer_model: Model to use for document summarization.
             verbose_dialog: Whether to show questions and answers in real-time.
+            use_rag: Whether to use RAG for document retrieval.
+            rag_chunk_size: Size of each document chunk for RAG indexing.
+            rag_chunk_overlap: Overlap between chunks for RAG indexing.
+            rag_top_k: Number of top relevant chunks to retrieve for each question.
         """
         self.provider = provider
         self.model = model
         self.summarize = summarize
         self.summarizer_model = summarizer_model or DEFAULT_SUMMARIZER_MODEL
         self.verbose_dialog = verbose_dialog
+        self.use_rag = use_rag
+        self.rag_chunk_size = rag_chunk_size
+        self.rag_chunk_overlap = rag_chunk_overlap
+        self.rag_top_k = rag_top_k
         self.console = Console()
+        self.rag_indexer = None
         
         # Initialize the main provider
         if provider == "anthropic":
@@ -229,7 +239,12 @@ class DocumentChecker:
     
     def ask_question(self, document_content: str, question: str) -> str:
         """Ask a question about the document using LLM."""
-        return self.main_provider.ask(document_content, question)
+        if self.use_rag and self.rag_indexer:
+            # Use RAG to get relevant context
+            context = self.rag_indexer.get_context_for_question(question)
+            return self.main_provider.ask(context, question)
+        else:
+            return self.main_provider.ask(document_content, question)
     
     
     def evaluate_answer(self, question: str, answer: str, evaluation_criteria: str) -> tuple[bool, str]:
@@ -474,6 +489,26 @@ class DocumentChecker:
                 self.console.print(f"[green]Document summarized successfully ({self.summarize} level)[/green] (Original: {original_length:,} chars → Summary: {len(document_content):,} chars, {reduction_pct:.1f}% reduction)")
             except Exception as e:
                 self.console.print(f"[red]Error: {e}[/red]")
+                raise
+        
+        # Index document for RAG if requested
+        if self.use_rag:
+            try:
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    console=self.console
+                ) as progress:
+                    index_task = progress.add_task("Indexing document for RAG...", total=None)
+                    self.rag_indexer = RAGIndexer(
+                        chunk_size=self.rag_chunk_size,
+                        chunk_overlap=self.rag_chunk_overlap
+                    )
+                    self.rag_indexer.index_document(document_content, doc_path)
+                    
+                self.console.print(f"[green]Document indexed successfully for RAG[/green] ({len(self.rag_indexer.chunks)} chunks created)")
+            except Exception as e:
+                self.console.print(f"[red]Error indexing document for RAG: {e}[/red]")
                 raise
         
         results = []
