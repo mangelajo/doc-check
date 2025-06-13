@@ -601,10 +601,7 @@ class HTMLFormatter(OutputFormatter):
                     <div class="bar-label success-rate">
                         Success Rate: {result.success_rate:.1f}%
                     </div>
-                    <div class="bar-label fail-label">
-                        <span class="icon fail-icon">✗</span>
-                        Failed: {result.failed_questions}
-                    </div>
+                    {f'<div class="bar-label fail-label"><span class="icon fail-icon">✗</span>Failed: {result.failed_questions}</div>' if result.failed_questions > 0 else ''}
                 </div>
             </div>
             <div class="stats-grid">
