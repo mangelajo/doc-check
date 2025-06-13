@@ -82,10 +82,12 @@ class OllamaProvider:
         """Make a request to the Ollama API."""
         url = f"{self.base_url}/api/generate"
         
+        # Combine system prompt and user prompt for Ollama
+        full_prompt = f"{system_prompt}\n\n{prompt}"
+        
         payload = {
             "model": self.model,
-            "prompt": prompt,
-            "system": system_prompt,
+            "prompt": full_prompt,
             "stream": False,
             "options": {
                 "temperature": DEFAULT_TEMPERATURE
