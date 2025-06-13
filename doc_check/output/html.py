@@ -1,12 +1,18 @@
 """HTML output formatter for doc-check results."""
 
-import re
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
 from .base import OutputFormatter
 from ..models import DocCheckResult
+
+try:
+    import markdown
+    from markdown.extensions import tables, fenced_code, codehilite
+    MARKDOWN_AVAILABLE = True
+except ImportError:
+    MARKDOWN_AVAILABLE = False
 
 
 class HTMLFormatter(OutputFormatter):
@@ -494,6 +500,52 @@ class HTMLFormatter(OutputFormatter):
         .answer-text em, .evaluation-text em {{
             font-style: italic;
         }}
+        /* Table styles for markdown tables */
+        .answer-text table, .evaluation-text table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            border: 1px solid #dee2e6;
+        }}
+        .answer-text th, .answer-text td,
+        .evaluation-text th, .evaluation-text td {{
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+        }}
+        .answer-text th, .evaluation-text th {{
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }}
+        .answer-text tr:nth-child(even), .evaluation-text tr:nth-child(even) {{
+            background-color: #f8f9fa;
+        }}
+        /* Blockquote styles */
+        .answer-text blockquote, .evaluation-text blockquote {{
+            border-left: 4px solid #667eea;
+            margin: 15px 0;
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            font-style: italic;
+        }}
+        /* Horizontal rule styles */
+        .answer-text hr, .evaluation-text hr {{
+            border: none;
+            border-top: 2px solid #dee2e6;
+            margin: 20px 0;
+        }}
+        /* Error/fallback styles */
+        .markdown-unavailable, .markdown-error {{
+            border: 1px solid #ffc107;
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }}
+        .markdown-unavailable p, .markdown-error p {{
+            margin: 0 0 10px 0;
+            color: #856404;
+        }}
         .question-text {{
             font-style: italic;
             color: #666;
@@ -622,6 +674,7 @@ class HTMLFormatter(OutputFormatter):
     
     def _is_markdown(self, text: str) -> bool:
         """Detect if text contains markdown formatting."""
+        import re
         markdown_patterns = [
             r'^#{1,6}\s+',  # Headers
             r'\*\*.*?\*\*',  # Bold
@@ -632,6 +685,7 @@ class HTMLFormatter(OutputFormatter):
             r'^\d+\. ',  # Ordered lists
             r'^\- ',  # Alternative unordered lists
             r'\[.*?\]\(.*?\)',  # Links
+            r'^\|.*\|.*\|',  # Tables
         ]
         
         for pattern in markdown_patterns:
@@ -640,80 +694,34 @@ class HTMLFormatter(OutputFormatter):
         return False
     
     def _convert_markdown_to_html(self, text: str) -> str:
-        """Convert basic markdown to HTML."""
-        # Escape HTML first
-        html = self._escape_html(text)
+        """Convert markdown to HTML using the markdown library."""
+        if not MARKDOWN_AVAILABLE:
+            # Fallback to escaped HTML if markdown library is not available
+            return f'<div class="markdown-unavailable"><p><em>Markdown library not available. Install with: pip install markdown</em></p><pre>{self._escape_html(text)}</pre></div>'
         
-        # Convert headers
-        html = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-        html = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-        html = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
-        
-        # Convert bold and italic
-        html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-        html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
-        
-        # Convert inline code
-        html = re.sub(r'`(.*?)`', r'<code>\1</code>', html)
-        
-        # Convert code blocks
-        html = re.sub(r'^```(\w+)?\n(.*?)^```', 
-                     lambda m: f'<pre><code class="language-{m.group(1) or ""}">{m.group(2)}</code></pre>',
-                     html, flags=re.MULTILINE | re.DOTALL)
-        
-        # Convert links
-        html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', html)
-        
-        # Convert lists
-        lines = html.split('\n')
-        in_ul = False
-        in_ol = False
-        result_lines = []
-        
-        for line in lines:
-            stripped = line.strip()
+        try:
+            # Configure markdown with useful extensions
+            md = markdown.Markdown(extensions=[
+                'tables',           # Support for tables
+                'fenced_code',      # Support for ```code``` blocks
+                'codehilite',       # Syntax highlighting for code
+                'nl2br',            # Convert newlines to <br>
+                'toc',              # Table of contents
+                'attr_list',        # Attribute lists {: .class}
+                'def_list',         # Definition lists
+                'abbr',             # Abbreviations
+                'footnotes',        # Footnotes
+            ], extension_configs={
+                'codehilite': {
+                    'css_class': 'highlight',
+                    'use_pygments': False,  # Use CSS classes instead of inline styles
+                }
+            })
             
-            # Unordered list items
-            if re.match(r'^[\*\-] ', stripped):
-                if not in_ul:
-                    if in_ol:
-                        result_lines.append('</ol>')
-                        in_ol = False
-                    result_lines.append('<ul>')
-                    in_ul = True
-                item_text = re.sub(r'^[\*\-] ', '', stripped)
-                result_lines.append(f'<li>{item_text}</li>')
+            # Convert markdown to HTML
+            html = md.convert(text)
+            return html
             
-            # Ordered list items
-            elif re.match(r'^\d+\. ', stripped):
-                if not in_ol:
-                    if in_ul:
-                        result_lines.append('</ul>')
-                        in_ul = False
-                    result_lines.append('<ol>')
-                    in_ol = True
-                item_text = re.sub(r'^\d+\. ', '', stripped)
-                result_lines.append(f'<li>{item_text}</li>')
-            
-            # Regular line
-            else:
-                if in_ul:
-                    result_lines.append('</ul>')
-                    in_ul = False
-                if in_ol:
-                    result_lines.append('</ol>')
-                    in_ol = False
-                
-                # Add paragraph tags for non-empty lines that aren't already HTML tags
-                if stripped and not re.match(r'^<[^>]+>', stripped):
-                    result_lines.append(f'<p>{line}</p>')
-                else:
-                    result_lines.append(line)
-        
-        # Close any open lists
-        if in_ul:
-            result_lines.append('</ul>')
-        if in_ol:
-            result_lines.append('</ol>')
-        
-        return '\n'.join(result_lines)
+        except Exception as e:
+            # If markdown conversion fails, fall back to escaped text
+            return f'<div class="markdown-error"><p><em>Error converting markdown: {self._escape_html(str(e))}</em></p><pre>{self._escape_html(text)}</pre></div>'
