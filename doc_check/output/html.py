@@ -1,5 +1,6 @@
 """HTML output formatter for doc-check results."""
 
+import re
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
@@ -94,11 +95,11 @@ class HTMLFormatter(OutputFormatter):
                         </div>
                         <div class="answer-block">
                             <h4>Answer</h4>
-                            <div class="answer-text">{self._escape_html(question_result.answer)}</div>
+                            <div class="answer-text">{self._detect_and_convert_content(question_result.answer)}</div>
                         </div>
                         <div class="evaluation-block">
                             <h4>Evaluation</h4>
-                            <div class="evaluation-text">{evaluation_full}</div>
+                            <div class="evaluation-text">{self._detect_and_convert_content(question_result.evaluation_result)}</div>
                         </div>
                     </div>
                 </div>
@@ -438,8 +439,60 @@ class HTMLFormatter(OutputFormatter):
             padding: 15px;
             border-radius: 6px;
             line-height: 1.6;
-            white-space: pre-wrap;
             word-wrap: break-word;
+        }}
+        .question-text {{
+            white-space: pre-wrap;
+        }}
+        .answer-text, .evaluation-text {{
+            /* Allow HTML content for markdown conversion */
+        }}
+        .answer-text h1, .answer-text h2, .answer-text h3,
+        .evaluation-text h1, .evaluation-text h2, .evaluation-text h3 {{
+            margin: 0.5em 0;
+            color: #333;
+        }}
+        .answer-text code, .evaluation-text code {{
+            background-color: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }}
+        .answer-text pre, .evaluation-text pre {{
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }}
+        .answer-text pre code, .evaluation-text pre code {{
+            background: none;
+            padding: 0;
+        }}
+        .answer-text ul, .answer-text ol,
+        .evaluation-text ul, .evaluation-text ol {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+        .answer-text li, .evaluation-text li {{
+            margin: 5px 0;
+        }}
+        .answer-text p, .evaluation-text p {{
+            margin: 10px 0;
+        }}
+        .answer-text a, .evaluation-text a {{
+            color: #667eea;
+            text-decoration: none;
+        }}
+        .answer-text a:hover, .evaluation-text a:hover {{
+            text-decoration: underline;
+        }}
+        .answer-text strong, .evaluation-text strong {{
+            font-weight: 600;
+        }}
+        .answer-text em, .evaluation-text em {{
+            font-style: italic;
         }}
         .question-text {{
             font-style: italic;
@@ -554,3 +607,113 @@ class HTMLFormatter(OutputFormatter):
                 .replace(">", "&gt;")
                 .replace('"', "&quot;")
                 .replace("'", "&#x27;"))
+    
+    def _detect_and_convert_content(self, text: str) -> str:
+        """Detect content type and convert to HTML if needed."""
+        if not text:
+            return ""
+        
+        # Check if content looks like markdown
+        if self._is_markdown(text):
+            return self._convert_markdown_to_html(text)
+        else:
+            # Regular text, just escape HTML
+            return self._escape_html(text)
+    
+    def _is_markdown(self, text: str) -> bool:
+        """Detect if text contains markdown formatting."""
+        markdown_patterns = [
+            r'^#{1,6}\s+',  # Headers
+            r'\*\*.*?\*\*',  # Bold
+            r'\*.*?\*',  # Italic
+            r'`.*?`',  # Inline code
+            r'^```',  # Code blocks
+            r'^\* ',  # Unordered lists
+            r'^\d+\. ',  # Ordered lists
+            r'^\- ',  # Alternative unordered lists
+            r'\[.*?\]\(.*?\)',  # Links
+        ]
+        
+        for pattern in markdown_patterns:
+            if re.search(pattern, text, re.MULTILINE):
+                return True
+        return False
+    
+    def _convert_markdown_to_html(self, text: str) -> str:
+        """Convert basic markdown to HTML."""
+        # Escape HTML first
+        html = self._escape_html(text)
+        
+        # Convert headers
+        html = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+        html = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+        html = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+        
+        # Convert bold and italic
+        html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
+        html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
+        
+        # Convert inline code
+        html = re.sub(r'`(.*?)`', r'<code>\1</code>', html)
+        
+        # Convert code blocks
+        html = re.sub(r'^```(\w+)?\n(.*?)^```', 
+                     lambda m: f'<pre><code class="language-{m.group(1) or ""}">{m.group(2)}</code></pre>',
+                     html, flags=re.MULTILINE | re.DOTALL)
+        
+        # Convert links
+        html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', html)
+        
+        # Convert lists
+        lines = html.split('\n')
+        in_ul = False
+        in_ol = False
+        result_lines = []
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Unordered list items
+            if re.match(r'^[\*\-] ', stripped):
+                if not in_ul:
+                    if in_ol:
+                        result_lines.append('</ol>')
+                        in_ol = False
+                    result_lines.append('<ul>')
+                    in_ul = True
+                item_text = re.sub(r'^[\*\-] ', '', stripped)
+                result_lines.append(f'<li>{item_text}</li>')
+            
+            # Ordered list items
+            elif re.match(r'^\d+\. ', stripped):
+                if not in_ol:
+                    if in_ul:
+                        result_lines.append('</ul>')
+                        in_ul = False
+                    result_lines.append('<ol>')
+                    in_ol = True
+                item_text = re.sub(r'^\d+\. ', '', stripped)
+                result_lines.append(f'<li>{item_text}</li>')
+            
+            # Regular line
+            else:
+                if in_ul:
+                    result_lines.append('</ul>')
+                    in_ul = False
+                if in_ol:
+                    result_lines.append('</ol>')
+                    in_ol = False
+                
+                # Add paragraph tags for non-empty lines that aren't already HTML tags
+                if stripped and not re.match(r'^<[^>]+>', stripped):
+                    result_lines.append(f'<p>{line}</p>')
+                else:
+                    result_lines.append(line)
+        
+        # Close any open lists
+        if in_ul:
+            result_lines.append('</ul>')
+        if in_ol:
+            result_lines.append('</ol>')
+        
+        return '\n'.join(result_lines)
