@@ -33,7 +33,7 @@ def cli():
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--verbose-dialog', is_flag=True, help='Show questions and answers in real-time as they are processed')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
-@click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
+@click.option('--format', type=click.Choice(['json', 'yaml', 'html', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 @click.option('--output-format', type=click.Choice(['html', 'junit']), help='Additional output format (html or junit)')
@@ -94,8 +94,15 @@ def check(
         
         # Save to file if requested
         if output:
-            save_results(result, output, format)
-            console.print(f"[green]Results saved to {output}[/green]")
+            if format == 'html':
+                from .output import get_formatter
+                formatter_class = get_formatter('html')
+                formatter = formatter_class(output.parent if output.parent != Path('.') else None)
+                output_path = formatter.write_results(result, output.stem)
+                console.print(f"[green]HTML results saved to {output_path}[/green]")
+            else:
+                save_results(result, output, format)
+                console.print(f"[green]Results saved to {output}[/green]")
         
         # Save additional output format if requested
         if output_format:
@@ -238,7 +245,7 @@ def validate(config_file: Path) -> None:
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed output')
 @click.option('--verbose-dialog', is_flag=True, help='Show questions and answers in real-time as they are processed')
 @click.option('--output', '-o', type=click.Path(path_type=Path), help='Save results to file (JSON/YAML based on extension)')
-@click.option('--format', type=click.Choice(['json', 'yaml', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
+@click.option('--format', type=click.Choice(['json', 'yaml', 'html', 'auto']), default='auto', help='Output format (auto-detects from file extension)')
 @click.option('--summarize', type=click.Choice(['minimal', 'light', 'medium', 'aggressive']), help='Summarize the document before asking questions. minimal: preserve nearly all content, light: preserve most details, medium: balanced summary, aggressive: high-level overview only')
 @click.option('--summarizer-model', help='Model to use for document summarization (default: claude-sonnet-4-20250514)')
 @click.option('--output-format', type=click.Choice(['html', 'junit']), help='Additional output format (html or junit)')
