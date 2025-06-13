@@ -47,26 +47,54 @@ class HTMLFormatter(OutputFormatter):
         end_time_str = result.end_time.strftime("%Y-%m-%d %H:%M:%S") if result.end_time else "N/A"
         duration_str = f"{result.duration_seconds:.1f}s" if result.duration_seconds else "N/A"
         
-        # Generate question results HTML
-        question_rows = []
+        # Generate summary table HTML
+        summary_rows = []
+        detailed_sections = []
+        
         for i, question_result in enumerate(result.results, 1):
             status = "PASS" if question_result.passed else "FAIL"
             status_class_row = "pass" if question_result.passed else "fail"
             
             if question_result.error:
-                evaluation = f"Error: {self._escape_html(question_result.error)}"
+                evaluation_summary = f"Error: {self._escape_html(question_result.error)}"
+                evaluation_full = evaluation_summary
             else:
-                evaluation = self._escape_html(question_result.evaluation_result)
+                evaluation_full = self._escape_html(question_result.evaluation_result)
+                # Create a shorter summary for the table
+                evaluation_summary = evaluation_full[:100] + "..." if len(evaluation_full) > 100 else evaluation_full
             
-            question_rows.append(f"""
+            # Summary table row
+            summary_rows.append(f"""
                 <tr class="{status_class_row}">
                     <td>{i}</td>
                     <td>{self._escape_html(question_result.name)}</td>
-                    <td class="question-text">{self._escape_html(question_result.question)}</td>
-                    <td class="answer-text">{self._escape_html(question_result.answer)}</td>
                     <td class="status {status_class_row}">{status}</td>
-                    <td class="evaluation-text">{evaluation}</td>
+                    <td class="evaluation-summary">{evaluation_summary}</td>
                 </tr>
+            """)
+            
+            # Detailed section
+            detailed_sections.append(f"""
+                <div class="question-detail {status_class_row}">
+                    <div class="question-header">
+                        <h3>Question {i}: {self._escape_html(question_result.name)}</h3>
+                        <div class="status-badge {status_class_row}">{status}</div>
+                    </div>
+                    <div class="question-content">
+                        <div class="question-block">
+                            <h4>Question</h4>
+                            <div class="question-text">{self._escape_html(question_result.question)}</div>
+                        </div>
+                        <div class="answer-block">
+                            <h4>Answer</h4>
+                            <div class="answer-text">{self._escape_html(question_result.answer)}</div>
+                        </div>
+                        <div class="evaluation-block">
+                            <h4>Evaluation</h4>
+                            <div class="evaluation-text">{evaluation_full}</div>
+                        </div>
+                    </div>
+                </div>
             """)
         
         # API usage section
@@ -239,21 +267,75 @@ class HTMLFormatter(OutputFormatter):
             background-color: #f44336;
             color: white;
         }}
-        .question-text, .answer-text, .evaluation-text {{
-            max-width: 300px;
+        .evaluation-summary {{
+            max-width: 400px;
             word-wrap: break-word;
             font-size: 0.9em;
             line-height: 1.4;
+            color: #555;
+        }}
+        .question-detail {{
+            margin: 30px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+        .question-detail.pass {{
+            border-left: 4px solid #4CAF50;
+        }}
+        .question-detail.fail {{
+            border-left: 4px solid #f44336;
+        }}
+        .question-header {{
+            background-color: #f8f9fa;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #dee2e6;
+        }}
+        .question-header h3 {{
+            margin: 0;
+            color: #333;
+            font-size: 1.2em;
+        }}
+        .question-content {{
+            padding: 20px;
+        }}
+        .question-block, .answer-block, .evaluation-block {{
+            margin-bottom: 25px;
+        }}
+        .question-block:last-child, .answer-block:last-child, .evaluation-block:last-child {{
+            margin-bottom: 0;
+        }}
+        .question-block h4, .answer-block h4, .evaluation-block h4 {{
+            margin: 0 0 10px 0;
+            color: #555;
+            font-size: 1em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .question-text, .answer-text, .evaluation-text {{
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }}
         .question-text {{
             font-style: italic;
             color: #666;
+            border-left: 3px solid #667eea;
         }}
         .answer-text {{
             color: #333;
+            border-left: 3px solid #28a745;
         }}
         .evaluation-text {{
             color: #555;
+            border-left: 3px solid #ffc107;
         }}
         .timestamp {{
             color: #666;
@@ -310,22 +392,25 @@ class HTMLFormatter(OutputFormatter):
         {api_usage_html}
         
         <div class="section">
-            <h2>Question Results</h2>
+            <h2>Results Summary</h2>
             <table class="results-table">
                 <thead>
                     <tr>
                         <th>#</th>
                         <th>Name</th>
-                        <th>Question</th>
-                        <th>Answer</th>
                         <th>Status</th>
-                        <th>Evaluation</th>
+                        <th>Evaluation Summary</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {''.join(question_rows)}
+                    {''.join(summary_rows)}
                 </tbody>
             </table>
+        </div>
+        
+        <div class="section">
+            <h2>Detailed Results</h2>
+            {''.join(detailed_sections)}
         </div>
         
         <div class="timestamp">
