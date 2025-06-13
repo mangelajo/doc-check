@@ -19,6 +19,10 @@ use or fork at your own risk...
 
 ## Preview
 
+[![asciicast](https://asciinema.org/a/S6hi5G7F9lX1HXbpblz7iHvvs.svg)](https://asciinema.org/a/S6hi5G7F9lX1HXbpblz7iHvvs)
+
+### Preview HTML output
+
 ![Doc-Check Preview](doc-check-0.png)
 
 Question and answer
