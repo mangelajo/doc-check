@@ -44,6 +44,7 @@ def cli():
 @click.option('--rag-chunk-size', type=int, default=512, help='Size of each document chunk for RAG indexing (default: 512)')
 @click.option('--rag-chunk-overlap', type=int, default=50, help='Overlap between chunks for RAG indexing (default: 50)')
 @click.option('--rag-top-k', type=int, default=5, help='Number of top relevant chunks to retrieve for each question (default: 5)')
+@click.option('--rag-fallback', is_flag=True, help='Retry with full document if RAG-based answer fails evaluation')
 def check(
     config_file: Path,
     api_key: Optional[str],
@@ -61,7 +62,8 @@ def check(
     use_rag: bool,
     rag_chunk_size: int,
     rag_chunk_overlap: int,
-    rag_top_k: int
+    rag_top_k: int,
+    rag_fallback: bool
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -103,7 +105,8 @@ def check(
             use_rag=use_rag,
             rag_chunk_size=rag_chunk_size,
             rag_chunk_overlap=rag_chunk_overlap,
-            rag_top_k=rag_top_k
+            rag_top_k=rag_top_k,
+            rag_fallback=rag_fallback
         )
         
         # Run the check
@@ -220,6 +223,7 @@ def validate(config_file: Path) -> None:
 @click.option('--rag-chunk-size', type=int, default=512, help='Size of each document chunk for RAG indexing (default: 512)')
 @click.option('--rag-chunk-overlap', type=int, default=50, help='Overlap between chunks for RAG indexing (default: 50)')
 @click.option('--rag-top-k', type=int, default=5, help='Number of top relevant chunks to retrieve for each question (default: 5)')
+@click.option('--rag-fallback', is_flag=True, help='Retry with full document if RAG-based answer fails evaluation')
 def main(
     config_file: Path,
     api_key: Optional[str],
@@ -237,7 +241,8 @@ def main(
     use_rag: bool,
     rag_chunk_size: int,
     rag_chunk_overlap: int,
-    rag_top_k: int
+    rag_top_k: int,
+    rag_fallback: bool
 ) -> None:
     """Check documentation using LLM-based Q&A evaluation.
     
@@ -262,7 +267,7 @@ def main(
             provider = detected_provider
             console.print(f"[dim]Auto-detected provider '{provider}' from model '{model}'[/dim]")
     
-    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, debug, output_format, output_dir, use_rag, rag_chunk_size, rag_chunk_overlap, rag_top_k)
+    return check(config_file, api_key, model, provider, verbose, output, format, summarize, summarizer_model, verbose_dialog, debug, output_format, output_dir, use_rag, rag_chunk_size, rag_chunk_overlap, rag_top_k, rag_fallback)
 
 
 if __name__ == '__main__':

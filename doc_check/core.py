@@ -121,7 +121,7 @@ def detect_provider_from_model(model: str) -> str:
 class DocumentChecker:
     """Main class for checking documents with LLM evaluation."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False, debug: bool = False, use_rag: bool = False, rag_chunk_size: int = 512, rag_chunk_overlap: int = 50, rag_top_k: int = 5):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_OPENAI_MODEL, provider: Literal["openai", "anthropic", "ollama"] = "openai", summarize: Optional[str] = None, summarizer_model: Optional[str] = None, verbose_dialog: bool = False, debug: bool = False, use_rag: bool = False, rag_chunk_size: int = 512, rag_chunk_overlap: int = 50, rag_top_k: int = 5, rag_fallback: bool = False):
         """Initialize the document checker.
         
         Args:
@@ -136,6 +136,7 @@ class DocumentChecker:
             rag_chunk_size: Size of each document chunk for RAG indexing.
             rag_chunk_overlap: Overlap between chunks for RAG indexing.
             rag_top_k: Number of top relevant chunks to retrieve for each question.
+            rag_fallback: Whether to retry with full document if RAG-based answer fails evaluation.
         """
         self.provider = provider
         self.model = model
@@ -147,6 +148,7 @@ class DocumentChecker:
         self.rag_chunk_size = rag_chunk_size
         self.rag_chunk_overlap = rag_chunk_overlap
         self.rag_top_k = rag_top_k
+        self.rag_fallback = rag_fallback
         self.console = Console()
         self.rag_indexer = None
         
@@ -584,6 +586,48 @@ class DocumentChecker:
                         ))
                     else:
                         self.console.print(f"[yellow]Evaluating:[/yellow] {question_config.name}")
+                    
+                    # If RAG was used and the answer failed, try with full document if fallback is enabled
+                    if self.use_rag and self.rag_fallback and not passed:
+                        self.console.print(f"[yellow]RAG answer failed, retrying with full document...[/yellow]")
+                        
+                        # Ask the question again with full document
+                        fallback_answer = self.main_provider.ask(document_content, question_config.question)
+                        
+                        if self.verbose_dialog:
+                            self.console.print(Panel(
+                                fallback_answer,
+                                title="Fallback Answer (Full Document)",
+                                border_style="blue",
+                                padding=(1, 2)
+                            ))
+                        
+                        # Evaluate the fallback answer with "(full document)" prefix
+                        fallback_passed, fallback_evaluation = self.evaluate_answer(
+                            question_config.question,
+                            fallback_answer,
+                            question_config.answerEvaluation
+                        )
+                        
+                        # Prefix the evaluation result to indicate it used the full document
+                        fallback_evaluation = f"(full document) {fallback_evaluation}"
+                        
+                        if self.verbose_dialog:
+                            self.console.print(Panel(
+                                fallback_evaluation,
+                                title=f"Fallback Evaluation: {question_config.name}",
+                                border_style="blue",
+                                padding=(1, 2)
+                            ))
+                        
+                        # Use the fallback result if it passed, otherwise keep the original
+                        if fallback_passed:
+                            answer = fallback_answer
+                            evaluation_result = fallback_evaluation
+                            passed = fallback_passed
+                            self.console.print(f"[green]Fallback succeeded![/green]")
+                        else:
+                            self.console.print(f"[red]Fallback also failed[/red]")
                     
                     result = QuestionResult(
                         name=question_config.name,
