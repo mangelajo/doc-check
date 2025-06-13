@@ -86,7 +86,7 @@ def check(
         )
         
         # Run the check
-        console.print(f"[bold blue]Starting document check with config: {config_file}[/bold blue]")
+        console.print(f"[bold cyan]Starting document check with config: {config_file}[/bold cyan]")
         result = checker.check_document(config_file)
         
         # Display results

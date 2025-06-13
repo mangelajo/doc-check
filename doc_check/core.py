@@ -344,11 +344,11 @@ class DocumentChecker:
                         self.console.print(Panel(
                             question_config.question,
                             title=f"Asking: {question_config.name}",
-                            border_style="blue",
+                            border_style="cyan",
                             padding=(1, 2)
                         ))
                     else:
-                        self.console.print(f"[blue]Asking:[/blue] {question_config.name}")
+                        self.console.print(f"[cyan]Asking:[/cyan] {question_config.name}")
                     
                     answer = self.ask_question(document_content, question_config.question)
                     
