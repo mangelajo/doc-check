@@ -4,15 +4,10 @@ from pathlib import Path
 from typing import Optional
 from datetime import datetime
 
+import markdown
+
 from .base import OutputFormatter
 from ..models import DocCheckResult
-
-try:
-    import markdown
-    from markdown.extensions import tables, fenced_code, codehilite
-    MARKDOWN_AVAILABLE = True
-except ImportError:
-    MARKDOWN_AVAILABLE = False
 
 
 class HTMLFormatter(OutputFormatter):
@@ -535,14 +530,14 @@ class HTMLFormatter(OutputFormatter):
             margin: 20px 0;
         }}
         /* Error/fallback styles */
-        .markdown-unavailable, .markdown-error {{
+        .markdown-error {{
             border: 1px solid #ffc107;
             background-color: #fff3cd;
             padding: 10px;
             border-radius: 4px;
             margin: 10px 0;
         }}
-        .markdown-unavailable p, .markdown-error p {{
+        .markdown-error p {{
             margin: 0 0 10px 0;
             color: #856404;
         }}
@@ -695,10 +690,6 @@ class HTMLFormatter(OutputFormatter):
     
     def _convert_markdown_to_html(self, text: str) -> str:
         """Convert markdown to HTML using the markdown library."""
-        if not MARKDOWN_AVAILABLE:
-            # Fallback to escaped HTML if markdown library is not available
-            return f'<div class="markdown-unavailable"><p><em>Markdown library not available. Install with: pip install markdown</em></p><pre>{self._escape_html(text)}</pre></div>'
-        
         try:
             # Configure markdown with useful extensions
             md = markdown.Markdown(extensions=[
