@@ -110,8 +110,8 @@ Estimated Cost: ${usage.estimated_cost:.4f}"""
             title = "🔍 Debug: Prompt"
         
         # Truncate very long prompts for display
-        if len(prompt) > 2000:
-            prompt = prompt[:2000] + "\n\n... [truncated for display]"
+        if len(prompt) > 20000:
+            prompt = prompt[:20000] + "\n\n... [truncated for display]"
         
         self.console.print(Panel(
             prompt,
@@ -132,8 +132,8 @@ Estimated Cost: ${usage.estimated_cost:.4f}"""
         )
         
         # Truncate very long prompts for display
-        if len(prompt) > 2000:
-            prompt = prompt[:2000] + "\n\n... [truncated for display]"
+        if len(prompt) > 20000:
+            prompt = prompt[:20000] + "\n\n... [truncated for display]"
         
         self.console.print(Panel(
             prompt,
