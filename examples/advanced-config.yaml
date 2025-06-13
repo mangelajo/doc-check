@@ -1,4 +1,26 @@
+# Advanced doc-check configuration with all options
 file: https://raw.githubusercontent.com/jumpstarter-dev/jumpstarter/main/README.md
+
+# Model and provider settings
+provider: anthropic
+model: claude-sonnet-4-20250514
+# api_key: your-api-key-here  # Better to use environment variable
+
+# Summarization settings
+summarize: medium
+summarizer_model: claude-sonnet-4-20250514
+
+# RAG settings for large documents
+use_rag: true
+rag_chunk_size: 1024
+rag_chunk_overlap: 100
+rag_top_k: 8
+rag_fallback: true
+
+# Debug and output settings
+verbose_dialog: false
+debug: false
+
 questions:
   - name: architecture overview
     question: What is the overall architecture of Jumpstarter?
@@ -27,3 +49,21 @@ questions:
       - Driver package allowlists
       - Access control mechanisms
       - Security considerations for multi-user environments
+
+  - name: installation options
+    question: What are the different ways to install and deploy Jumpstarter?
+    answerEvaluation: |
+      The answer should cover:
+      - Local installation methods
+      - Container/Docker deployment
+      - Kubernetes/cluster deployment
+      - Development setup options
+
+  - name: performance optimization
+    question: How can I optimize Jumpstarter performance for my use case?
+    answerEvaluation: |
+      The answer should address:
+      - Performance tuning options
+      - Resource management
+      - Scaling considerations
+      - Monitoring and profiling tools

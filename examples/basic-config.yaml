@@ -1,4 +1,26 @@
+# Basic doc-check configuration
 file: README.md
+
+# Optional: Model and provider settings (can be overridden by CLI)
+# provider: openai  # openai, anthropic, or ollama
+# model: gpt-4.1    # Model to use for evaluation
+# api_key: your-api-key-here  # Or set via environment variable
+
+# Optional: Summarization settings
+# summarize: medium  # minimal, light, medium, aggressive, cleanup
+# summarizer_model: claude-sonnet-4-20250514  # Model for summarization
+
+# Optional: RAG settings
+# use_rag: false
+# rag_chunk_size: 512
+# rag_chunk_overlap: 50
+# rag_top_k: 5
+# rag_fallback: false
+
+# Optional: Debug settings
+# verbose_dialog: false
+# debug: false
+
 questions:
   - name: installation
     question: How do I install this software?
