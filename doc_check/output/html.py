@@ -281,6 +281,54 @@ class HTMLFormatter(OutputFormatter):
             color: #333;
             text-shadow: 1px 1px 1px rgba(255,255,255,0.8);
         }}
+        .results-bar {{
+            margin: 20px 0 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }}
+        .bar-container {{
+            display: flex;
+            height: 40px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }}
+        .bar-segment {{
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }}
+        .pass-segment {{
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }}
+        .fail-segment {{
+            background: linear-gradient(135deg, #f44336, #e53935);
+        }}
+        .bar-labels {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .bar-label {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }}
+        .pass-label {{
+            color: #4CAF50;
+        }}
+        .fail-label {{
+            color: #f44336;
+        }}
         .results-table {{
             width: 100%;
             border-collapse: collapse;
@@ -421,6 +469,22 @@ class HTMLFormatter(OutputFormatter):
         
         <div class="section">
             <h2>Summary</h2>
+            <div class="results-bar">
+                <div class="bar-container">
+                    <div class="bar-segment pass-segment" style="width: {result.success_rate}%"></div>
+                    <div class="bar-segment fail-segment" style="width: {100 - result.success_rate}%"></div>
+                </div>
+                <div class="bar-labels">
+                    <div class="bar-label pass-label">
+                        <span class="icon pass-icon">✓</span>
+                        Passed: {result.passed_questions}
+                    </div>
+                    <div class="bar-label fail-label">
+                        <span class="icon fail-icon">✗</span>
+                        Failed: {result.failed_questions}
+                    </div>
+                </div>
+            </div>
             <div class="stats-grid">
                 <div class="stat">
                     <span class="label">Total Questions:</span>
