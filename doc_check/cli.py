@@ -130,66 +130,10 @@ def check(
 
 def display_results(console: Console, result: DocCheckResult, verbose: bool) -> None:
     """Display the results in a formatted way."""
+    from .output import CLIFormatter
     
-    # Summary panel
-    summary_text = f"""
-Total Questions: {result.total_questions}
-Passed: [green]{result.passed_questions}[/green]
-Failed: [red]{result.failed_questions}[/red]
-Success Rate: {result.success_rate:.1f}%"""
-    
-    # Add timing information if available
-    if result.duration_seconds:
-        summary_text += f"\nDuration: {result.duration_seconds:.1f}s"
-    
-    # Add API usage information if available
-    if result.api_usage:
-        usage = result.api_usage
-        summary_text += f"""
-API Provider: {usage.provider}
-Model: {usage.model}
-API Calls: {usage.api_calls}
-Total Tokens: {usage.total_tokens:,}
-Input Tokens: {usage.input_tokens:,}
-Output Tokens: {usage.output_tokens:,}
-Estimated Cost: ${usage.estimated_cost:.4f}"""
-    
-    console.print(Panel(summary_text.strip(), title="Summary", border_style="blue"))
-    
-    # Results table
-    table = Table(title="Question Results")
-    table.add_column("Question", style="cyan", no_wrap=False)
-    table.add_column("Status", justify="center")
-    table.add_column("Evaluation", no_wrap=False)
-    
-    for question_result in result.results:
-        status = "[green]PASS[/green]" if question_result.passed else "[red]FAIL[/red]"
-        
-        if question_result.error:
-            evaluation = f"[red]Error: {question_result.error}[/red]"
-        else:
-            evaluation = question_result.evaluation_result
-        
-        table.add_row(
-            question_result.name,
-            status,
-            evaluation
-        )
-    
-    console.print(table)
-    
-    # Detailed output if verbose
-    if verbose:
-        console.print("\n[bold]Detailed Results:[/bold]")
-        for i, question_result in enumerate(result.results, 1):
-            console.print(f"\n[bold cyan]Question {i}: {question_result.name}[/bold cyan]")
-            console.print(f"[dim]Q: {question_result.question}[/dim]")
-            
-            if question_result.error:
-                console.print(f"[red]Error: {question_result.error}[/red]")
-            else:
-                console.print(f"[yellow]Answer:[/yellow] {question_result.answer}")
-                console.print(f"[blue]Evaluation:[/blue] {question_result.evaluation_result}")
+    formatter = CLIFormatter(console=console)
+    formatter.display_results(result, verbose=verbose)
 
 
 def save_results(result: DocCheckResult, output_path: Path, format: str = 'auto') -> None:
