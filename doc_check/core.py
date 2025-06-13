@@ -275,6 +275,24 @@ class DocumentChecker:
         
         content = document_content
         
+        # First, extract and preserve code blocks to protect them from whitespace cleanup
+        code_blocks = []
+        inline_code = []
+        
+        # Extract triple-backtick code blocks
+        def preserve_code_block(match):
+            code_blocks.append(match.group(0))
+            return f"__CODE_BLOCK_{len(code_blocks)-1}__"
+        
+        content = re.sub(r'```.*?```', preserve_code_block, content, flags=re.DOTALL)
+        
+        # Extract inline code (single backticks)
+        def preserve_inline_code(match):
+            inline_code.append(match.group(0))
+            return f"__INLINE_CODE_{len(inline_code)-1}__"
+        
+        content = re.sub(r'`[^`\n]+`', preserve_inline_code, content)
+        
         # Remove HTML comments
         content = re.sub(r'<!--.*?-->', '', content, flags=re.DOTALL)
         
@@ -302,7 +320,7 @@ class DocumentChecker:
         content = re.sub(r'<em[^>]*>(.*?)</em>', r'*\1*', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'<i[^>]*>(.*?)</i>', r'*\1*', content, flags=re.IGNORECASE | re.DOTALL)
         
-        # Code blocks and inline code
+        # Code blocks and inline code (HTML to markdown conversion)
         content = re.sub(r'<code[^>]*>(.*?)</code>', r'`\1`', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'<pre[^>]*><code[^>]*>(.*?)</code></pre>', r'```\n\1\n```', content, flags=re.IGNORECASE | re.DOTALL)
         content = re.sub(r'<pre[^>]*>(.*?)</pre>', r'```\n\1\n```', content, flags=re.IGNORECASE | re.DOTALL)
@@ -342,7 +360,7 @@ class DocumentChecker:
         import html
         content = html.unescape(content)
         
-        # Clean up excessive whitespace and empty lines
+        # Clean up excessive whitespace and empty lines (but avoid code block placeholders)
         content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)  # Multiple empty lines to double
         content = re.sub(r'[ \t]+\n', '\n', content)  # Trailing whitespace
         content = re.sub(r'\n[ \t]+', '\n', content)  # Leading whitespace on lines
@@ -368,6 +386,13 @@ class DocumentChecker:
         # Clean up list formatting
         content = re.sub(r'\n-\s*\n', '\n', content)  # Empty list items
         content = re.sub(r'^-\s*$', '', content, flags=re.MULTILINE)  # Empty list items at line start
+        
+        # Restore code blocks and inline code with original formatting preserved
+        for i, code_block in enumerate(code_blocks):
+            content = content.replace(f"__CODE_BLOCK_{i}__", code_block)
+        
+        for i, inline in enumerate(inline_code):
+            content = content.replace(f"__INLINE_CODE_{i}__", inline)
         
         return content.strip()
     
